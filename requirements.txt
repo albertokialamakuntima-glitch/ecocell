@@ -1,0 +1,6 @@
+earthengine-api
+pandas
+numpy
+shapely>=2
+pycountry
+pycountry-convert
