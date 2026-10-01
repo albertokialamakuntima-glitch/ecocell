@@ -4,8 +4,8 @@ from shapely.geometry import shape,mapping,MultiPolygon,box
 from shapely.ops import transform
 from shapely.strtree import STRtree
 PT={'Algeria': 'Argélia', 'Benin': 'Benim', 'Botswana': 'Botsuana', 'Cameroon': 'Camarões', 'Central African Rep.': 'Rep. Centro-Africana', 'Chad': 'Chade', 'Comoros': 'Comores', 'Dem. Rep. Congo': 'RD Congo', 'Djibouti': 'Jibuti', 'Egypt': 'Egipto', 'Eq. Guinea': 'Guiné Equatorial', 'Eritrea': 'Eritreia', 'eSwatini': 'Essuatíni', 'Ethiopia': 'Etiópia', 'Gabon': 'Gabão', 'Gambia': 'Gâmbia', 'Ghana': 'Gana', 'Guinea': 'Guiné', 'Guinea-Bissau': 'Guiné-Bissau', "Côte d'Ivoire": 'Costa do Marfim', 'Kenya': 'Quénia', 'Lesotho': 'Lesoto', 'Liberia': 'Libéria', 'Libya': 'Líbia', 'Madagascar': 'Madagáscar', 'Malawi': 'Maláui', 'Mauritania': 'Mauritânia', 'Mauritius': 'Maurícia', 'Morocco': 'Marrocos', 'Mozambique': 'Moçambique', 'Namibia': 'Namíbia', 'Niger': 'Níger', 'Nigeria': 'Nigéria', 'Rwanda': 'Ruanda', 'São Tomé and Principe': 'São Tomé e Príncipe', 'Seychelles': 'Seicheles', 'Sierra Leone': 'Serra Leoa', 'Somalia': 'Somália', 'Somaliland': 'Somalilândia', 'South Africa': 'África do Sul', 'S. Sudan': 'Sudão do Sul', 'Sudan': 'Sudão', 'Tanzania': 'Tanzânia', 'Tunisia': 'Tunísia', 'W. Sahara': 'Saara Ocidental', 'Zambia': 'Zâmbia', 'Zimbabwe': 'Zimbábue'}
-d=pd.read_csv('data/cells.csv').drop_duplicates(['lat','lon']).reset_index(drop=True)
-M=json.load(open('data/meta.json'));from datetime import date;DAYS=(date.fromisoformat(M['end'])-date.fromisoformat(M['start'])).days
+d=pd.read_csv('cells.csv').drop_duplicates(['lat','lon']).reset_index(drop=True)
+M=json.load(open('meta.json'));from datetime import date;DAYS=(date.fromisoformat(M['end'])-date.fromisoformat(M['start'])).days
 if 'recent' not in d: d['recent']=np.nan
 print('células fundidas',len(d))
 def fix(s):
@@ -20,7 +20,7 @@ def fix(s):
             r=transform(lambda x,y,z=None:(np.asarray(x)+sh,y),r)
             out+=[x for x in (r.geoms if hasattr(r,'geoms') else [r]) if x.geom_type=='Polygon' and x.area>0]
     return MultiPolygon(out)
-g=json.load(open('data/world.json')); feats=[f for f in g['features'] if f['properties']['name']!='Antarctica']
+g=json.load(open('world.json')); feats=[f for f in g['features'] if f['properties']['name']!='Antarctica']
 shp=[fix(shape(f['geometry'])) for f in feats]; names=[f['properties']['name'] for f in feats]
 # continentes
 CONT=[('África',[-18,-35,52,38],8),('Europa',[-25,34,45,72],3),('Ásia',[25,-11,180,78],30),('América do Norte',[-170,7,-50,83],30),('América do Sul',[-92,-56,-34,13],10),('Oceânia',[110,-48,180,-1],20)]
@@ -81,7 +81,7 @@ for i,(s,n) in enumerate(zip(shp,names)):
 data={'cells':cells,'countries':cs,'geo':{'type':'FeatureCollection','features':gf},'top':top,'thr':[round(q1,1),round(q2,1)],
       'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT]}
 h=open('template.html').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
-open('docs/index.html','w').write(h)
+open('index.html','w').write(h)
 print(len(cells),'células',len(h)//1024,'KB','países com dados',sum(c['nc']>0 for c in cs),'mar',int(d.sea.sum()),'fiável',round(d.ch.notna().mean(),2),q1,q2)
 print(d.sort_values('rk').head(10).assign(c=lambda x:x.ci.map(lambda i:names[i]))[['c','lat','lon','sea','an','ch','sc']].round(2).to_string())
 print('sem dados (grandes):',[(names[i],round(c['a'])) for i,c in enumerate(cs) if c['nc']==0 and c['a']>40])

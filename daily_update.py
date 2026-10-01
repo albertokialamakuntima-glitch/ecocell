@@ -1,4 +1,4 @@
-"""Atualiza data/cells.csv com o CH4 mais recente do Sentinel-5P (Google Earth Engine).
+"""Atualiza cells.csv com o CH4 mais recente do Sentinel-5P (Google Earth Engine).
 Sem getInfo gigante: a grelha é dividida em blocos pequenos e cada um é descarregado por URL.
 Credenciais: variáveis EE_SERVICE_ACCOUNT_JSON e EE_PROJECT (GitHub Actions) ou o teu login local."""
 import ee, os, io, json, time, urllib.request, concurrent.futures as cf
@@ -39,6 +39,6 @@ jobs = [(w, s) for w in range(-180, 180, 20) for s in range(-60, 80, 20)]
 with cf.ThreadPoolExecutor(6) as ex: parts = list(ex.map(lambda a: tile(*a), jobs))
 df = pd.concat(parts).drop_duplicates(["lat", "lon"])
 if len(df) < 20000: raise SystemExit(f"só {len(df)} células, a manter os dados antigos")
-df.round(5).to_csv("data/cells.csv", index=False)
-json.dump({"start": str(START), "end": str(END)}, open("data/meta.json", "w"))
+df.round(5).to_csv("cells.csv", index=False)
+json.dump({"start": str(START), "end": str(END)}, open("meta.json", "w"))
 print("ok", len(df), "células", START, END)
