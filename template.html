@@ -22,24 +22,23 @@ tr.go{cursor:pointer}tr.go:hover{background:var(--bg)}.tw{overflow-x:auto}
 button.b{border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer}
 .bar{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:8px 0}.mut{color:var(--mut);font-size:13px}h2{font-size:16px;margin:0 0 8px}
 html,body{height:100%;overflow:hidden}
-#map{position:fixed;inset:0;width:100vw;height:100vh;border-radius:0}
+#map{position:fixed;inset:0;width:100%;height:100%;border-radius:0}
 .gl{background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(6px);border:1px solid var(--bd);border-radius:12px;color:var(--fg)}
 .tb{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;z-index:5;pointer-events:none}.tb>*{pointer-events:auto}
-.win{position:fixed;top:calc(74px + env(safe-area-inset-top,0px));right:12px;width:min(400px,calc(100vw - 24px));max-height:calc(100vh - 160px);overflow:auto;z-index:6;display:none}.win.wide{width:min(560px,calc(100vw - 24px))}.win.on{display:block}
+.win{position:fixed;top:calc(74px + env(safe-area-inset-top,0px));right:12px;width:min(400px,calc(100vw - 24px));max-height:calc(100vh - 160px);max-height:calc(100dvh - 160px);overflow:auto;z-index:6;display:none}.win.wide{width:min(560px,calc(100vw - 24px))}.win.on{display:block}
 .wh{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;cursor:move;border-bottom:1px solid var(--bd);font-weight:600;position:sticky;top:0;background:var(--card);z-index:1}.wb{padding:12px 14px}
 .dock{position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:5;padding:8px 12px;max-width:calc(100vw - 24px)}
-</style></head><body>
+@media(max-width:700px){.win,.win.wide{top:calc(124px + env(safe-area-inset-top,0px));max-height:calc(100vh - 140px)}}</style></head><body>
 <svg id="map"></svg>
 <div class="tb"><div class="gl" style="padding:8px 14px"><b id="ttl">EcoCell Earth Intelligence</b><div class="mut" style="font-size:12px">Metano (CH₄) · Sentinel-5P · grelha de 1°</div></div>
 <button class="b gl" data-w="n">Níveis</button><button class="b gl" data-w="e">Onde aplicar a EcoCell</button><button class="b gl" data-w="i">Detalhe</button><button class="b gl" id="back" style="display:none">← Mundo</button></div>
 <div class="win gl on" id="w-i"><div class="wh"><span>Detalhe</span><button class="b" data-x="i">×</button></div><div class="wb" id="info"><p class="mut">Clica num país para ampliar o continente. Países a cinzento: sem informações no momento.</p></div></div>
-<div class="win gl" id="w-n"><div class="wh"><span>Níveis</span><button class="b" data-x="n">×</button></div><div class="wb"><h2>Níveis de metano</h2>
+<div class="win gl" id="w-n"><div class="wh"><span>Níveis</span><button class="b" data-x="n">×</button></div><div class="wb"><h2 id="hn">Níveis de metano</h2>
 <p class="mut" id="thr"></p><div class="bar" id="bar"></div><div class="lg" id="lg2"></div>
 <p class="mut">O nível compara cada célula com a mediana da sua faixa de latitude (o CH₄ varia naturalmente de norte para sul). Baixo, médio e alto são os três terços dessa diferença.</p>
-<h2 style="margin-top:16px">Países com maior anomalia média (terra)</h2><div class="tw"><table id="tc"></table></div></div></div>
-<div class="win gl wide" id="w-e"><div class="wh"><span>Onde aplicar a EcoCell</span><button class="b" data-x="e">×</button></div><div class="wb"><h2>Onde aplicar a EcoCell — zonas candidatas</h2>
-<p class="mut">Células com maior pontuação (anomalia de CH₄ + tendência fiável), no máximo 2 por país. São candidatas a investigar, não confirmações de fonte.</p>
-<div class="tw"><table id="te"></table></div>
+<h2 id="hn2" style="margin-top:16px"></h2><div class="tw"><table id="tc"></table></div></div></div>
+<div class="win gl wide" id="w-e"><div class="wh"><span>Onde aplicar a EcoCell</span><button class="b" data-x="e">×</button></div><div class="wb"><h2 id="he"></h2><p class="mut">Prioridade = média da pontuação das 5 melhores células de cada país (anomalia de CH₄ + tendência fiável, sem latitudes acima de 60°). São candidatas a investigar, não confirmações de fonte. Clica numa linha para ir à zona.</p><div class="tw"><table id="tp"></table></div>
+<h2 id="hc" style="margin-top:16px"></h2><div class="tw"><table id="te"></table></div>
 <h2 style="margin-top:16px">Antes de escolher um local</h2>
 <p class="mut">1) Validar a fonte: fogachos de gás (VIIRS Nightfire), campos e blocos petrolíferos, aterros, pecuária. 2) Excluir zonas húmidas naturais (ex.: Sudd, bacia do Congo), onde o metano é natural e a EcoCell não é a solução. 3) Confirmar com mais de um período: a tendência só é usada quando é fisicamente plausível.</p></div></div>
 <div id="lg" hidden></div>
@@ -48,14 +47,14 @@ html,body{height:100%;overflow:hidden}
 const D=__DATA__;
 const LV=['baixo','médio','alto'],CL=['var(--lo)','var(--me)','var(--hi)'];
 const C=D.cells.map((a,i)=>({i,lat:a[0],lon:a[1],m:a[2],ch:a[3],an:a[4],sc:a[5],lv:a[6],sea:a[7],ci:a[8],rk:a[9],rc:a[10]??null}));
-const W=innerWidth,H=innerHeight,S=Math.max(W/6.32,H/3.6),$=s=>document.querySelector(s),proj=d3.geoMercator().center([0,20]).scale(S).translate([W/2,H/2]);
+let W=innerWidth||800,H=innerHeight||600,S=Math.max(W/6.32,H/3.6);const $=s=>document.querySelector(s),proj=d3.geoMercator().center([0,20]).scale(S).translate([W/2,H/2]);
 const P=r=>'M'+r.map(p=>proj(p).map(v=>v.toFixed(1)).join(',')).join('L')+'Z';
 const GP=g=>(g.type==='Polygon'?[g.coordinates]:g.coordinates).map(pl=>pl.map(P).join('')).join('');
 const cp=c=>P([[c.lon-.5,c.lat-.5],[c.lon-.5,c.lat+.5],[c.lon+.5,c.lat+.5],[c.lon+.5,c.lat-.5]]);
 const badge=l=>`<span class="badge" style="background:${CL[l]}">${LV[l]}</span>`;
 const lgd=LV.map((l,i)=>`<span><i style="background:${CL[i]}"></i>${l}</span>`).join('');
 $('#lg2').innerHTML=lgd;
-const svg=d3.select('#map').attr('viewBox',`0 0 ${W} ${H}`),g=svg.append('g'),cg=g.append('g'),lg=g.append('g').attr('pointer-events','none');
+const svg=d3.select('#map').attr('viewBox',`0 0 ${W} ${H}`).attr('preserveAspectRatio','xMidYMid slice'),g=svg.append('g'),cg=g.append('g'),lg=g.append('g').attr('pointer-events','none');
 const col=d3.scaleSequential(d3.interpolateYlOrRd).domain([-8,14]),CN=D.conts,has=i=>D.countries[i].nc>0;
 const WI='<h2>Detalhe</h2><p class="mut">Clica num país para ampliar o continente. Países a cinzento: sem informações no momento.</p>';
 let lvl=0,cur=-1,curC=-1,CR=[];
@@ -76,8 +75,8 @@ const lab=lg.selectAll('text').data(D.geo.features.filter(f=>has(f.properties.i)
  .attr('text-anchor','middle').style('fill','#1f2430').style('stroke','#fff').style('paint-order','stroke').style('display','none');
 const CLB=[[18,4],[15,55],[95,48],[-102,46],[-60,-14],[134,-25]];
 const cl0=lg.selectAll('.cn').data(CN).join('text').attr('class','cn').text(c=>c.n).attr('text-anchor','middle').attr('data-fs',11).attr('font-size',11)
- .attr('x',(c,k)=>proj(CLB[k])[0]).attr('y',(c,k)=>proj(CLB[k])[1]).style('fill','#1f2430').style('stroke','#fff').style('stroke-width',2.5).style('paint-order','stroke').style('font-weight',700);
-[['North Atlantic Ocean',-42,32],['South Atlantic Ocean',-14,-20],['North Pacific Ocean',-150,28],['South Pacific Ocean',-120,-25],['Indian Ocean',80,-15]].forEach(o=>lg.append('text').attr('class','cn').text(o[0]).attr('x',proj([o[1],o[2]])[0]).attr('y',proj([o[1],o[2]])[1]).attr('text-anchor','middle').attr('data-fs',8).attr('font-size',8).style('fill','#2b7c93').style('letter-spacing','1px'));
+ .attr('data-lo',(c,k)=>CLB[k][0]).attr('data-la',(c,k)=>CLB[k][1]).attr('x',(c,k)=>proj(CLB[k])[0]).attr('y',(c,k)=>proj(CLB[k])[1]).style('fill','#1f2430').style('stroke','#fff').style('stroke-width',2.5).style('paint-order','stroke').style('font-weight',700);
+[['North Atlantic Ocean',-42,32],['South Atlantic Ocean',-14,-20],['North Pacific Ocean',-150,28],['South Pacific Ocean',-120,-25],['Indian Ocean',80,-15]].forEach(o=>lg.append('text').attr('class','cn').text(o[0]).attr('data-lo',o[1]).attr('data-la',o[2]).attr('x',proj([o[1],o[2]])[0]).attr('y',proj([o[1],o[2]])[1]).attr('text-anchor','middle').attr('data-fs',8).attr('font-size',8).style('fill','#2b7c93').style('letter-spacing','1px'));
 const cl=lg.selectAll('.cn');
 legend();
 function labels(k,fn){lab.style('display',f=>fn(f.properties)?null:'none').attr('font-size',10/k).style('stroke-width',3/k)}
@@ -85,15 +84,15 @@ const zoom=d3.zoom().clickDistance(8).tapDistance(12).scaleExtent([.8,150]).on('
 svg.call(zoom).on('dblclick.zoom',null);
 function tf(k,cx,cy){svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity.translate(W/2-k*cx,H/2-k*cy).scale(k))}
 function other(n){$('#info').innerHTML=`<h2>${n}</h2><p><b>Sem informações no momento.</b></p><p class="mut">Este país ainda não tem dados de metano processados.</p>`}
-function cont(k){lvl=1;cur=k;$('#back').textContent='← '+CN[k].n;$('#back').title='Voltar ao Mundo';paths.style('fill',fillOf);legend();cl.style('display','none');const b=CN[k].b,a=proj([b[0],b[3]]),z=proj([b[2],b[1]]),s=.92*Math.min(W/(z[0]-a[0]),H/(z[1]-a[1]));
+function cont(k){lvl=1;cur=k;renderLists();$('#back').textContent='← '+CN[k].n;$('#back').title='Voltar ao Mundo';paths.style('fill',fillOf);legend();cl.style('display','none');const b=CN[k].b,a=proj([b[0],b[3]]),z=proj([b[2],b[1]]),s=.92*Math.min(W/(z[0]-a[0]),H/(z[1]-a[1]));
  tf(s,(a[0]+z[0])/2,(a[1]+z[1])/2);paths.style('opacity',f=>D.countries[f.properties.i].k===k?1:.3);cg.selectAll('path').remove();
  labels(s,p=>D.countries[p.i].k===k&&D.countries[p.i].a>CN[k].lt);
  const n=D.countries.filter(c=>c.k===k&&c.nc>0).length;
  crumbs([{t:'Mundo',fn:world},{t:CN[k].n}]);$('#back').style.display='';
  $('#info').innerHTML=`<h2>${CN[k].n}</h2><p class="mut">${n} países com dados de CH₄. Clica num país para ver as células.</p>`}
-function world(){lvl=0;cur=-1;paths.style('fill',fillOf);legend();cl.style('display',null);svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity);paths.style('opacity',null);cg.selectAll('path').remove();labels(1,()=>false);
+function world(){lvl=0;cur=-1;renderLists();paths.style('fill',fillOf);legend();cl.style('display',null);svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity);paths.style('opacity',null);cg.selectAll('path').remove();labels(1,()=>false);
  crumbs([{t:'Mundo'}]);$('#back').style.display='none';$('#info').innerHTML=WI}
-function go(i,cell){lvl=2;cur=D.countries[i].k;curC=i;$('#back').textContent='← '+D.countries[i].n;$('#back').title='Voltar a '+CN[cur].n;paths.style('fill',fillOf);legend();cl.style('display','none');const cs=C.filter(c=>c.ci===i),bb=D.countries[i].b,p0=proj([bb[0],bb[3]]),p1=proj([bb[2],bb[1]]),x0=p0[0],x1=p1[0],y0=p0[1],y1=p1[1],
+function go(i,cell){lvl=2;cur=D.countries[i].k;renderLists();curC=i;$('#back').textContent='← '+D.countries[i].n;$('#back').title='Voltar a '+CN[cur].n;paths.style('fill',fillOf);legend();cl.style('display','none');const cs=C.filter(c=>c.ci===i),bb=D.countries[i].b,p0=proj([bb[0],bb[3]]),p1=proj([bb[2],bb[1]]),x0=p0[0],x1=p1[0],y0=p0[1],y1=p1[1],
  k=Math.min(Math.max(10,Math.min(60,6*Math.sqrt(cs.length))),.9*Math.min(W/(x1-x0),H/(y1-y0)));
  tf(k,(x0+x1)/2,(y0+y1)/2);paths.style('opacity',f=>f.properties.i===i?1:.25);labels(k,p=>p.i===i);
  cg.selectAll('path').remove();
@@ -132,6 +131,11 @@ function sim(c){$('#sim').innerHTML=`<h2 style="margin-top:14px">Simulação Eco
  <tr><td>Anomalia (ppb)</td><td>${c.an.toFixed(1)}</td><td>${(c.an*(1-p)).toFixed(1)}</td><td>${(-c.an*p).toFixed(1)}</td></tr></table>
  <p class="mut">CH₄ captado ${cap.toFixed(1)} t/dia · eletricidade ${(cap*13.9*e).toFixed(0)} MWh/dia · CO₂ gerado ${(cap*2.75).toFixed(1)} t/dia · H₂ máx. teórico ${(cap*.5).toFixed(1)} t/dia. Base: GWP100 do CH₄ = 29,8; 13,9 kWh térmicos por kg; 2,75 t CO₂ por t CH₄ oxidado. A anomalia cai em proporção à captura (ilustrativo). Biomassa não é calculada: falta o rendimento medido da EcoCell.</p>`};
  ['s1','s2','s3'].forEach(id=>$('#'+id).oninput=f);f()}
+function relayout(){W=innerWidth||W;H=innerHeight||H;S=Math.max(W/6.32,H/3.6);proj.scale(S).translate([W/2,H/2]);svg.attr('viewBox',`0 0 ${W} ${H}`);
+ paths.attr('d',f=>GP(f.geometry));lab.attr('x',f=>proj([f.properties.lon,f.properties.lat])[0]).attr('y',f=>proj([f.properties.lon,f.properties.lat])[1]);
+ cl.each(function(){const p=proj([+this.dataset.lo,+this.dataset.la]);this.setAttribute('x',p[0]);this.setAttribute('y',p[1])});}
+let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(Math.abs(innerWidth-W)<40&&Math.abs(innerHeight-H)<150)return;relayout();lvl===0?world():lvl===1?cont(cur):lvl===2?go(curC):go(curC)},250)});
+setTimeout(()=>{if(innerWidth!==W||innerHeight!==H){relayout();world()}},400);
 $('#back').onclick=()=>lvl===3?go(curC):lvl===2?cont(cur):world();
 function openWin(id,on){const w=$('#w-'+id);w.classList.toggle('on',on===undefined?!w.classList.contains('on'):on)}
 function tab(t){if(t==='m'){if(innerWidth<700){openWin('n',false);openWin('e',false)}openWin('i',true)}else openWin(t,true)}
@@ -141,14 +145,23 @@ document.querySelectorAll('.wh').forEach(h=>{h.onmousedown=e=>{if(e.target.close
  const mv=e=>{w.style.left=Math.max(0,Math.min(innerWidth-80,e.clientX-dx))+'px';w.style.top=Math.max(0,Math.min(innerHeight-40,e.clientY-dy))+'px'},up=()=>{removeEventListener('mousemove',mv);removeEventListener('mouseup',up)};
  addEventListener('mousemove',mv);addEventListener('mouseup',up);e.preventDefault()}});
 
-// Níveis
-const cnt=[0,1,2].map(l=>C.filter(c=>c.lv===l).length);
-$('#bar').innerHTML=cnt.map((n,l)=>`<div style="width:${n/C.length*100}%;background:${CL[l]}" title="${LV[l]}: ${n}"></div>`).join('');
-$('#thr').textContent=`Limiares da anomalia: baixo ≤ ${D.thr[0]} ppb · médio até ${D.thr[1]} ppb · alto acima. Células: ${cnt[0]} baixo, ${cnt[1]} médio, ${cnt[2]} alto.`;
-const cs=D.countries.map((c,i)=>({...c,i})).filter(c=>c.ma!=null&&c.nl>=5).sort((a,b)=>b.ma-a.ma).slice(0,15);
-$('#tc').innerHTML='<tr><th>País</th><th>Anomalia média</th><th>% células altas</th></tr>'+cs.map(c=>`<tr class="go" data-i="${c.i}"><td>${c.n}</td><td>${c.ma>=0?'+':''}${c.ma.toFixed(1)} ppb</td><td>${c.hi}%</td></tr>`).join('');
-document.querySelectorAll('#tc tr.go').forEach(r=>r.onclick=()=>{tab('m');go(+r.dataset.i)});
-// EcoCell
-$('#te').innerHTML='<tr><th>#</th><th>Onde</th><th>Tipo</th><th>Nível</th><th>Pontuação</th><th>Aplicação a investigar</th></tr>'+D.top.map((i,n)=>{const c=C[i];return `<tr class="go" data-i="${i}"><td>${n+1}</td><td>${D.countries[c.ci].n}<br><span class="mut">${c.lat.toFixed(1)}°, ${c.lon.toFixed(1)}°</span></td><td>${c.sea?'Mar':'Terra'}</td><td>${badge(c.lv)}</td><td>${c.sc.toFixed(1)}</td><td>${c.sea?'Plataformas e fogachos offshore':'Extracção, aterros, pecuária ou arrozais'}</td></tr>`}).join('');
-document.querySelectorAll('#te tr.go').forEach(r=>r.onclick=()=>{const c=C[+r.dataset.i];tab('m');go(c.ci,c)});
+const okc=c=>c.ch!=null&&Math.abs(c.lat)<=60,BY={};
+C.forEach(c=>{if(okc(c))(BY[c.ci]=BY[c.ci]||[]).push(c)});Object.values(BY).forEach(a=>a.sort((x,y)=>y.sc-x.sc));
+const PR=i=>BY[i]&&D.countries[i].nl>=5?d3.mean(BY[i].slice(0,5),c=>c.sc):null,lvOf=v=>v<=D.thr[0]?0:v<=D.thr[1]?1:2,sgn=v=>(v>=0?'+':'')+v.toFixed(1);
+function renderLists(){const k=cur,nm=k<0?'Mundo':CN[k].n,inK=i=>k<0||D.countries[i].k===k,cs=C.filter(c=>inK(c.ci)),cnt=[0,1,2].map(l=>cs.filter(c=>c.lv===l).length);
+ $('#hn').textContent='Níveis de metano — '+nm;
+ $('#bar').innerHTML=cnt.map((n,l)=>`<div style="width:${n/(cs.length||1)*100}%;background:${CL[l]}" title="${LV[l]}: ${n}"></div>`).join('');
+ $('#thr').textContent=`Limiares da anomalia: baixo ≤ ${D.thr[0]} ppb · médio até ${D.thr[1]} ppb · alto acima. ${nm}: ${cnt[0]} baixo, ${cnt[1]} médio, ${cnt[2]} alto.${k<0?' Clica num país para ver só o continente dele.':''}`;
+ const rows=D.countries.map((c,i)=>({...c,i})).filter(c=>inK(c.i)&&c.ma!=null&&c.nl>=5).sort((a,b)=>b.ma-a.ma).slice(0,k<0?15:300);
+ $('#hn2').textContent=k<0?'Países com maior anomalia média (terra)':'Países de '+nm+' por nível de metano';
+ $('#tc').innerHTML='<tr><th>País</th><th>Anomalia média</th><th>% células altas</th><th>Nível</th></tr>'+rows.map(c=>`<tr class="go" data-i="${c.i}"><td>${c.n}</td><td>${sgn(c.ma)} ppb</td><td>${c.hi}%</td><td>${badge(lvOf(c.ma))}</td></tr>`).join('');
+ const pr=D.countries.map((c,i)=>({i,c,p:PR(i)})).filter(x=>x.p!=null&&inK(x.i)).sort((a,b)=>b.p-a.p).slice(0,k<0?15:300);
+ $('#he').textContent='Onde aplicar a EcoCell — '+(k<0?'melhores países do mundo':'ranking de países de '+nm);
+ $('#tp').innerHTML='<tr><th>#</th><th>País</th><th>Prioridade</th><th>Células altas</th><th>Melhor zona</th></tr>'+pr.map((x,n)=>{const b=BY[x.i][0];return `<tr class="go" data-c="${b.i}"><td>${n+1}</td><td>${x.c.n}</td><td>${x.p.toFixed(1)}</td><td>${x.c.hi}%</td><td>${b.lat.toFixed(1)}°, ${b.lon.toFixed(1)}° · ${b.sea?'mar':'terra'}</td></tr>`}).join('');
+ $('#hc').textContent='Melhores células '+(k<0?'do mundo':'de '+nm)+' (máx. 2 por país)';
+ const seen={},tops=cs.filter(okc).sort((a,b)=>b.sc-a.sc).filter(c=>(seen[c.ci]=(seen[c.ci]||0)+1)<=2).slice(0,k<0?30:20);
+ $('#te').innerHTML='<tr><th>#</th><th>Onde</th><th>Tipo</th><th>Nível</th><th>Pontuação</th><th>Aplicação a investigar</th></tr>'+tops.map((c,n)=>`<tr class="go" data-c="${c.i}"><td>${n+1}</td><td>${D.countries[c.ci].n}<br><span class="mut">${c.lat.toFixed(1)}°, ${c.lon.toFixed(1)}°</span></td><td>${c.sea?'Mar':'Terra'}</td><td>${badge(c.lv)}</td><td>${c.sc.toFixed(1)}</td><td>${c.sea?'Plataformas e fogachos offshore':'Extracção, aterros, pecuária ou arrozais'}</td></tr>`).join('');
+ document.querySelectorAll('#tc tr.go').forEach(r=>r.onclick=()=>{tab('m');go(+r.dataset.i)});
+ document.querySelectorAll('#tp tr.go,#te tr.go').forEach(r=>r.onclick=()=>{const c=C[+r.dataset.c];tab('m');go(c.ci,c)})}
+renderLists();
 </script></body></html>
