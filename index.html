@@ -82,6 +82,8 @@ legend();
 function labels(k,fn){lab.style('display',f=>fn(f.properties)?null:'none').attr('font-size',10/k).style('stroke-width',3/k)}
 const zoom=d3.zoom().clickDistance(8).tapDistance(12).scaleExtent([.8,150]).on('zoom',e=>{const k=e.transform.k;g.attr('transform',e.transform);lab.attr('font-size',10/k).style('stroke-width',3/k);cl.attr('font-size',function(){return this.dataset.fs/k}).style('stroke-width',2.5/k)});
 svg.call(zoom).on('dblclick.zoom',null);
+svg.on('click',e=>{if(e.target!==svg.node())return;const ll=proj.invert(d3.zoomTransform(svg.node()).invert(d3.pointer(e,svg.node())));
+ $('#info').innerHTML=`<h2>Mar aberto</h2><p class="mut">${ll[1].toFixed(2)}°, ${ll[0].toFixed(2)}°</p><p><b>Sem informações de metano neste ponto.</b></p><p class="mut">Só há células em terra e junto à costa. Clica num país para ver os dados.</p>`});
 function tf(k,cx,cy){svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity.translate(W/2-k*cx,H/2-k*cy).scale(k))}
 function other(n){$('#info').innerHTML=`<h2>${n}</h2><p><b>Sem informações no momento.</b></p><p class="mut">Este país ainda não tem dados de metano processados.</p>`}
 function cont(k){lvl=1;cur=k;renderLists();$('#back').textContent='← '+CN[k].n;$('#back').title='Voltar ao Mundo';paths.style('fill',fillOf);legend();cl.style('display','none');const b=CN[k].b,a=proj([b[0],b[3]]),z=proj([b[2],b[1]]),s=.92*Math.min(W/(z[0]-a[0]),H/(z[1]-a[1]));
@@ -137,8 +139,8 @@ function relayout(){W=innerWidth||W;H=innerHeight||H;S=Math.max(W/6.32,H/3.6);pr
 let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(Math.abs(innerWidth-W)<40&&Math.abs(innerHeight-H)<150)return;relayout();lvl===0?world():lvl===1?cont(cur):lvl===2?go(curC):go(curC)},250)});
 setTimeout(()=>{if(innerWidth!==W||innerHeight!==H){relayout();world()}},400);
 $('#back').onclick=()=>lvl===3?go(curC):lvl===2?cont(cur):world();
-function openWin(id,on){const w=$('#w-'+id);w.classList.toggle('on',on===undefined?!w.classList.contains('on'):on)}
-function tab(t){if(t==='m'){if(innerWidth<700){openWin('n',false);openWin('e',false)}openWin('i',true)}else openWin(t,true)}
+function openWin(id,on){const w=$('#w-'+id),open=on===undefined?!w.classList.contains('on'):on;document.querySelectorAll('.win').forEach(x=>x.classList.remove('on'));if(open)w.classList.add('on')}
+function tab(t){openWin(t==='m'?'i':t,true)}
 document.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>openWin(b.dataset.w));document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>openWin(b.dataset.x,false));
 new MutationObserver(()=>openWin('i',true)).observe($('#info'),{childList:true});
 document.querySelectorAll('.wh').forEach(h=>{h.onmousedown=e=>{if(e.target.closest('button'))return;const w=h.parentElement,r=w.getBoundingClientRect(),dx=e.clientX-r.left,dy=e.clientY-r.top;w.style.right='auto';
@@ -152,12 +154,12 @@ function renderLists(){const k=cur,nm=k<0?'Mundo':CN[k].n,inK=i=>k<0||D.countrie
  $('#hn').textContent='Níveis de metano — '+nm;
  $('#bar').innerHTML=cnt.map((n,l)=>`<div style="width:${n/(cs.length||1)*100}%;background:${CL[l]}" title="${LV[l]}: ${n}"></div>`).join('');
  $('#thr').textContent=`Limiares da anomalia: baixo ≤ ${D.thr[0]} ppb · médio até ${D.thr[1]} ppb · alto acima. ${nm}: ${cnt[0]} baixo, ${cnt[1]} médio, ${cnt[2]} alto.${k<0?' Clica num país para ver só o continente dele.':''}`;
- const rows=D.countries.map((c,i)=>({...c,i})).filter(c=>inK(c.i)&&c.ma!=null&&c.nl>=5).sort((a,b)=>b.ma-a.ma).slice(0,k<0?15:300);
- $('#hn2').textContent=k<0?'Países com maior anomalia média (terra)':'Países de '+nm+' por nível de metano';
- $('#tc').innerHTML='<tr><th>País</th><th>Anomalia média</th><th>% células altas</th><th>Nível</th></tr>'+rows.map(c=>`<tr class="go" data-i="${c.i}"><td>${c.n}</td><td>${sgn(c.ma)} ppb</td><td>${c.hi}%</td><td>${badge(lvOf(c.ma))}</td></tr>`).join('');
- const pr=D.countries.map((c,i)=>({i,c,p:PR(i)})).filter(x=>x.p!=null&&inK(x.i)).sort((a,b)=>b.p-a.p).slice(0,k<0?15:300);
- $('#he').textContent='Onde aplicar a EcoCell — '+(k<0?'melhores países do mundo':'ranking de países de '+nm);
- $('#tp').innerHTML='<tr><th>#</th><th>País</th><th>Prioridade</th><th>Células altas</th><th>Melhor zona</th></tr>'+pr.map((x,n)=>{const b=BY[x.i][0];return `<tr class="go" data-c="${b.i}"><td>${n+1}</td><td>${x.c.n}</td><td>${x.p.toFixed(1)}</td><td>${x.c.hi}%</td><td>${b.lat.toFixed(1)}°, ${b.lon.toFixed(1)}° · ${b.sea?'mar':'terra'}</td></tr>`}).join('');
+ const rows=D.countries.map((c,i)=>({...c,i})).filter(c=>inK(c.i)&&c.ma!=null&&c.nl>=5).sort((a,b)=>b.ma-a.ma).slice(0,300);
+ $('#hn2').textContent=k<0?'Todos os países do mundo, por anomalia média (terra)':'Países de '+nm+' por nível de metano';
+ $('#tc').innerHTML='<tr><th>#</th><th>País</th>'+(k<0?'<th>Continente</th>':'')+'<th>Anomalia média</th><th>% células altas</th><th>Nível</th></tr>'+rows.map((c,n)=>`<tr class="go" data-i="${c.i}"><td>${n+1}</td><td>${c.n}</td>${k<0?`<td>${CN[c.k].n}</td>`:''}<td>${sgn(c.ma)} ppb</td><td>${c.hi}%</td><td>${badge(lvOf(c.ma))}</td></tr>`).join('');
+ const pr=D.countries.map((c,i)=>({i,c,p:PR(i)})).filter(x=>x.p!=null&&inK(x.i)).sort((a,b)=>b.p-a.p).slice(0,300);
+ $('#he').textContent='Onde aplicar a EcoCell — '+(k<0?'ranking de todos os países':'ranking de países de '+nm);
+ $('#tp').innerHTML='<tr><th>#</th><th>País</th>'+(k<0?'<th>Continente</th>':'')+'<th>Prioridade</th><th>Células altas</th><th>Melhor zona</th></tr>'+pr.map((x,n)=>{const b=BY[x.i][0];return `<tr class="go" data-c="${b.i}"><td>${n+1}</td><td>${x.c.n}</td>${k<0?`<td>${CN[x.c.k].n}</td>`:''}<td>${x.p.toFixed(1)}</td><td>${x.c.hi}%</td><td>${b.lat.toFixed(1)}°, ${b.lon.toFixed(1)}° · ${b.sea?'mar':'terra'}</td></tr>`}).join('');
  $('#hc').textContent='Melhores células '+(k<0?'do mundo':'de '+nm)+' (máx. 2 por país)';
  const seen={},tops=cs.filter(okc).sort((a,b)=>b.sc-a.sc).filter(c=>(seen[c.ci]=(seen[c.ci]||0)+1)<=2).slice(0,k<0?30:20);
  $('#te').innerHTML='<tr><th>#</th><th>Onde</th><th>Tipo</th><th>Nível</th><th>Pontuação</th><th>Aplicação a investigar</th></tr>'+tops.map((c,n)=>`<tr class="go" data-c="${c.i}"><td>${n+1}</td><td>${D.countries[c.ci].n}<br><span class="mut">${c.lat.toFixed(1)}°, ${c.lon.toFixed(1)}°</span></td><td>${c.sea?'Mar':'Terra'}</td><td>${badge(c.lv)}</td><td>${c.sc.toFixed(1)}</td><td>${c.sea?'Plataformas e fogachos offshore':'Extracção, aterros, pecuária ou arrozais'}</td></tr>`).join('');
