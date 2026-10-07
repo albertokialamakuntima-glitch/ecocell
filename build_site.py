@@ -1,4 +1,4 @@
-import json,re,glob,numpy as np,pandas as pd,shapely,pycountry
+import os,json,re,glob,numpy as np,pandas as pd,shapely,pycountry
 import pycountry_convert as pc
 from shapely.geometry import shape,mapping,MultiPolygon,box
 from shapely.ops import transform
@@ -20,6 +20,7 @@ def fix(s):
             r=transform(lambda x,y,z=None:(np.asarray(x)+sh,y),r)
             out+=[x for x in (r.geoms if hasattr(r,'geoms') else [r]) if x.geom_type=='Polygon' and x.area>0]
     return MultiPolygon(out)
+AIRS_FILE=os.environ.get('AIRS_FILE','airs_trends.json')
 g=json.load(open('world.json')); feats=[f for f in g['features'] if f['properties']['name']!='Antarctica']
 shp=[fix(shape(f['geometry'])) for f in feats]; names=[f['properties']['name'] for f in feats]
 # continentes
@@ -64,7 +65,7 @@ def expected(s):
 cs=[]
 for i,n in enumerate(names):
     s=d[d.ci==i]; l=s[s.sea==0]
-    cs.append({'n':PT.get(n,n),'k':K[i],'v':vclass(n),'b':mainb(shp[i]),'ne':expected(shp[i]) if len(d[d.ci==i]) else 0,'a':round(shp[i].area,1),'nc':len(s),'nl':len(l),
+    cs.append({'en':n,'n':PT.get(n,n),'k':K[i],'v':vclass(n),'b':mainb(shp[i]),'ne':expected(shp[i]) if len(d[d.ci==i]) else 0,'a':round(shp[i].area,1),'nc':len(s),'nl':len(l),
       'ma':None if l.empty else round(float(l.an.mean()),1),'hi':int(round(100*(s.lv==2).mean())) if len(s) else 0})
 top=[];cc={}
 for ix in d.sort_values('rk').index:
@@ -78,8 +79,27 @@ gf=[]
 for i,(s,n) in enumerate(zip(shp,names)):
     m=mapping(s.simplify(0.03 if cs[i]['nc'] and K[i]==0 else 0.1)); big=max(s.geoms,key=lambda p:p.area); rp=big.representative_point()
     gf.append({'type':'Feature','properties':{'i':i,'lon':round(rp.x,2),'lat':round(rp.y,2)},'geometry':{'type':m['type'],'coordinates':rd(m['coordinates'])}})
+# ---- NASA AIRS (opcional)
+AIRS=None
+if os.path.exists(AIRS_FILE):
+    raw=open(AIRS_FILE,'rb').read()
+    try: AJ=json.loads(raw.decode('utf-8'))
+    except UnicodeDecodeError: AJ=json.loads(raw.decode('cp1252'))
+    cl=np.array(AJ['celulas']); wt=np.cos(np.radians(cl[:,0])); G=float((cl[:,2]*wt).sum()/wt.sum())
+    def _fix(k):
+        try: return k.encode('cp1252').decode('utf-8')
+        except Exception: return k
+    AJ['paises']={_fix(k):v for k,v in AJ['paises'].items()}
+    for i,c in enumerate(cs):
+        p=AJ['paises'].get(c['en']); c['air']=None
+        if not p: continue
+        f=float(np.sqrt((1+p['r1'])/(1-p['r1']))); lo=p['slope']-(p['slope']-p['lo'])*f; hi=p['slope']+(p['hi']-p['slope'])*f
+        c['air']=dict(s=round(p['slope'],2),lo=round(lo,2),hi=round(hi,2),rel=round(p['slope']-G,2),pd=round(p['pct_decada'],2),q=p['q'],r1=p['r1'],
+                      sa=int(p['q']<0.05 and lo>0),sr=int(G<lo or G>hi),an=p['anos'],se=p['serie_anual'])
+    AIRS=dict(G=round(G,2),periodo=AJ['periodo'],inst=AJ['instrumento'],nivel=AJ['nivel_hPa'])
+    print('AIRS: países com série',sum(1 for c in cs if c.get('air')),'| tendência global',round(G,2),'ppb/ano')
 data={'cells':cells,'countries':cs,'geo':{'type':'FeatureCollection','features':gf},'top':top,'thr':[round(q1,1),round(q2,1)],
-      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT]}
+      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS}
 h=open('template.html').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
 open('index.html','w').write(h)
 print(len(cells),'células',len(h)//1024,'KB','países com dados',sum(c['nc']>0 for c in cs),'mar',int(d.sea.sum()),'fiável',round(d.ch.notna().mean(),2),q1,q2)
