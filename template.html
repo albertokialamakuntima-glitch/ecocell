@@ -31,7 +31,7 @@ html,body{height:100%;overflow:hidden}
 @media(max-width:700px){.win,.win.wide{top:calc(124px + env(safe-area-inset-top,0px));max-height:calc(100vh - 140px)}}</style></head><body>
 <svg id="map"></svg>
 <div class="tb"><div class="gl" style="padding:8px 14px"><b id="ttl">EcoCell Earth Intelligence</b><div class="mut" style="font-size:12px">Metano (CH₄) · Sentinel-5P · grelha de 1°</div></div>
-<button class="b gl" data-w="n">Níveis</button><button class="b gl" data-w="e">Onde aplicar a EcoCell</button><button class="b gl" data-w="t">Tendência NASA</button><button class="b gl" id="btnL">Mapa: natural</button><button class="b gl" data-w="i">Detalhe</button><button class="b gl" id="back" style="display:none">← Mundo</button></div>
+<button class="b gl" data-w="n">Níveis</button><button class="b gl" data-w="e">Onde aplicar a EcoCell</button><button class="b gl" data-w="t">Tendência NASA</button><button class="b gl" data-w="q">Quando mudou?</button><button class="b gl" id="btnL">Mapa: natural</button><button class="b gl" data-w="i">Detalhe</button><button class="b gl" id="back" style="display:none">← Mundo</button></div>
 <div class="win gl on" id="w-i"><div class="wh"><span>Detalhe</span><button class="b" data-x="i">×</button></div><div class="wb" id="info"><p class="mut">Clica num país para ampliar o continente. Países a cinzento: sem informações no momento.</p></div></div>
 <div class="win gl" id="w-n"><div class="wh"><span>Níveis</span><button class="b" data-x="n">×</button></div><div class="wb"><h2 id="hn">Níveis de metano</h2>
 <p class="mut" id="thr"></p><div class="bar" id="bar"></div><div class="lg" id="lg2"></div>
@@ -42,7 +42,7 @@ html,body{height:100%;overflow:hidden}
 <h2 style="margin-top:16px">Antes de escolher um local</h2>
 <p class="mut">1) Validar a fonte: fogachos de gás (VIIRS Nightfire), campos e blocos petrolíferos, aterros, pecuária. 2) Excluir zonas húmidas naturais (ex.: Sudd, bacia do Congo), onde o metano é natural e a EcoCell não é a solução. 3) Confirmar com mais de um período: a tendência só é usada quando é fisicamente plausível.</p></div></div>
 <div class="win gl wide" id="w-t"><div class="wh"><span>Tendência NASA (AIRS)</span><button class="b" data-x="t">×</button></div><div class="wb"><h2 id="ht"></h2><div id="hv"></div><p class="mut" id="htp"></p>
-<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0"><span>abaixo da média global</span><div style="flex:1;height:10px;border-radius:5px;background:linear-gradient(90deg,#2166ac,#f7f7f7,#b2182b)"></div><span>acima</span></div><h2 style="margin-top:8px">Continentes</h2><div class="tw"><table id="tk"></table></div><h2 style="margin-top:12px">Países</h2><div class="tw"><table id="tt"></table></div></div></div><div id="lg" hidden></div>
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0"><span>abaixo da média global</span><div style="flex:1;height:10px;border-radius:5px;background:linear-gradient(90deg,#2166ac,#f7f7f7,#b2182b)"></div><span>acima</span></div><h2 style="margin-top:8px">Continentes</h2><div class="tw"><table id="tk"></table></div><h2 style="margin-top:12px">Países</h2><div class="tw"><table id="tt"></table></div></div></div><div class="win gl wide" id="w-q"><div class="wh"><span>Quando mudou? Metano global (AIRS)</span><button class="b" data-x="q">×</button></div><div class="wb" id="pq"></div></div><div id="lg" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script>
 const D=__DATA__;
@@ -178,6 +178,22 @@ function renderAirs(){const k=cur,nm=k<0?'Mundo':CN[k].n,A=D.airs;if(!A){$('#ht'
  $('#tt').innerHTML='<tr><th>#</th><th>País</th>'+(k<0?'<th>Continente</th>':'')+'<th>ppb/ano</th><th>IC 95%</th><th>vs global</th><th>Diferente</th></tr>'+rows.map((c,n)=>`<tr class="go" data-i="${c.i}"><td>${n+1}</td><td>${c.n}</td>${k<0?`<td>${CN[c.k].n}</td>`:''}<td>${f(c.air.s)}</td><td>${f(c.air.lo)} a ${f(c.air.hi)}</td><td>${f(c.air.rel)}</td><td>${c.air.sr?'sim':'não'}</td></tr>`).join('');
  document.querySelectorAll('#tt tr.go').forEach(r=>r.onclick=()=>{tab('m');go(+r.dataset.i)})}
 $('#btnL').onclick=()=>{layer=layer==='n'?'t':'n';$('#btnL').textContent=layer==='t'?'Mapa: tendência (indicativo)':'Mapa: natural';paths.style('fill',fillOf);if(layer==='t')openWin('t',true)};
+function perHTML(){const P=D.per;if(!P)return '<p class="mut">Sem dados de períodos.</p>';const f=v=>(v>=0?'+':'')+v.toFixed(2).replace('.',','),G=P.global_,ks=Object.keys(G),R=P.janela_5_anos,
+ NO=[[2020,15.2],[2021,17.9],[2022,13.1],[2023,8.44],[2024,7.51]],w=520,h=230,p=34,X=t=>p+(t-2004.5)/20.5*(w-p-8),Y=v=>h-26-(v+2)/20*(h-40);
+ const tx=(x,y,s,a)=>`<text x="${x}" y="${y}" font-size="10" fill="currentColor" ${a?'text-anchor="'+a+'"':''}>${s}</text>`;
+ const band=R.map(r=>X(r[0])+','+Y(r[3])).join(' ')+' '+R.slice().reverse().map(r=>X(r[0])+','+Y(r[2])).join(' ');
+ const svg=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto"><polygon points="${band}" fill="#1f7a4d" opacity=".22"/><line x1="${p}" x2="${w-8}" y1="${Y(0)}" y2="${Y(0)}" stroke="#9aa5a0"/>
+ <polyline fill="none" stroke="#1f7a4d" stroke-width="2.2" points="${R.map(r=>X(r[0])+','+Y(r[1])).join(' ')}"/>${NO.map(n=>`<circle cx="${X(n[0])}" cy="${Y(n[1])}" r="4" fill="#e6a117" stroke="#fff"/>`).join('')}
+ ${[2005,2010,2015,2020,2025].map(a=>tx(X(a),h-10,a,'middle')).join('')}${[0,5,10,15].map(v=>tx(2,Y(v)+3,v)).join('')}</svg>`;
+ const fx=P.faixas,fk=Object.keys(fx),pk='2019-01 a 2026-08',a=P.aceleracao;
+ return `<p style="font-size:13px"><b>O que muda?</b> O metano global sobe e <b>acelera</b>: o ritmo aumenta ${f(a.valor)} ppb/ano em cada ano (IC 95%: ${f(a.lo)} a ${f(a.hi)}), ${a.significativa?'significativo':'não significativo'}.</p>
+ <table><tr><th>Período</th><th>ppb/ano</th><th>IC 95%</th></tr>${ks.map(k=>`<tr><td>${k.replace(' a ',' → ')}</td><td><b>${f(G[k].slope)}</b></td><td>${f(G[k].lo)} a ${f(G[k].hi)}</td></tr>`).join('')}</table>
+ <h2 style="margin-top:14px">Quando? Tendência em janelas de 5 anos</h2>${svg}
+ <p class="mut" style="font-size:12px">Verde: AIRS (NASA), com intervalo de 95%. Pontos laranja: crescimento anual medido à superfície pela NOAA (2020: 15,2; 2021: 17,9; 2022: 13,1; 2023: 8,4; 2024: 7,5 ppb/ano).</p>
+ <p style="font-size:13px">O AIRS mostra um ritmo de 4 a 5 ppb/ano até 2018, uma subida forte em 2019–2022 (pico de cerca de +11,6 ppb/ano em janelas centradas em 2021) e depois abrandamento. O calendário coincide com o recorde medido pela NOAA em 2020–2022 e com o abrandamento posterior. <b>Limites:</b> o AIRS (a 400 hPa) subestima a amplitude face à superfície (pico de ~11,6 contra 15 a 18 ppb/ano), e nas últimas janelas o intervalo inclui o zero, por isso o fim da série é pouco fiável.</p>
+ <h2 style="margin-top:14px">Onde? Faixas de latitude, 2019–2026</h2><table><tr><th>Faixa</th><th>AIRS ppb/ano</th><th>IC 95%</th><th>Sentinel-5P</th></tr>${fk.map(k=>`<tr><td>${k}</td><td>${f(fx[k][pk].slope)}</td><td>${f(fx[k][pk].lo)} a ${f(fx[k][pk].hi)}</td><td>${fx[k].s5p_2019_2026!=null?f(fx[k].s5p_2019_2026):'–'}</td></tr>`).join('')}</table>
+ <p class="mut" style="font-size:12px">Os intervalos das três faixas sobrepõem-se por completo e o Sentinel-5P cai dentro de cada um: <b>não há diferença regional significativa</b>, só a subida global. Fontes: NASA Aqua AIRS L3 v7.0; ESA Sentinel-5P; NOAA GML e Lan et al. 2024, PNAS.</p>`}
+$('#pq').innerHTML=perHTML();
 $('#back').onclick=()=>lvl===3?go(curC):lvl===2?cont(cur):world();
 function openWin(id,on){const w=$('#w-'+id),open=on===undefined?!w.classList.contains('on'):on;document.querySelectorAll('.win').forEach(x=>x.classList.remove('on'));if(open)w.classList.add('on')}
 function tab(t){openWin(t==='m'?'i':t,true)}
