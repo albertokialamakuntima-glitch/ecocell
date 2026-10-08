@@ -118,7 +118,7 @@ if os.path.exists('validacao.json'):
     VAL=dict(ga=V['global_airs'],gs=V['global_s5p'],r=V['pearson'],rho=V['spearman'],conc=V['concordancia_sinal'],rp=V['pearson_paises'],n=V['n_celulas'],img=img)
     print('Validação carregada: r =',V['pearson'])
 data={'cells':cells,'countries':cs,'geo':{'type':'FeatureCollection','features':gf},'top':top,'thr':[round(q1,1),round(q2,1)],
-      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'valid':VAL,'per':(json.load(open('periodos.json',encoding='utf-8')) if os.path.exists('periodos.json') else None)}
+      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'ptmap':{v:k for k,v in PT.items()},'valid':VAL,'per':(json.load(open('periodos.json',encoding='utf-8')) if os.path.exists('periodos.json') else None)}
 json.dump({n:CONT[K[i]][0] for i,n in enumerate(names)},open('continentes.json','w',encoding='utf-8'),ensure_ascii=False)
 h=open('template.html').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
 open('index.html','w').write(h)
