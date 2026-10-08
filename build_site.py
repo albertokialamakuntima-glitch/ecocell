@@ -80,26 +80,46 @@ for i,(s,n) in enumerate(zip(shp,names)):
     m=mapping(s.simplify(0.03 if cs[i]['nc'] and K[i]==0 else 0.1)); big=max(s.geoms,key=lambda p:p.area); rp=big.representative_point()
     gf.append({'type':'Feature','properties':{'i':i,'lon':round(rp.x,2),'lat':round(rp.y,2)},'geometry':{'type':m['type'],'coordinates':rd(m['coordinates'])}})
 # ---- NASA AIRS (opcional)
-AIRS=None
+AIRS=None;AC={};AK=[]
 if os.path.exists(AIRS_FILE):
     raw=open(AIRS_FILE,'rb').read()
     try: AJ=json.loads(raw.decode('utf-8'))
     except UnicodeDecodeError: AJ=json.loads(raw.decode('cp1252'))
-    cl=np.array(AJ['celulas']); wt=np.cos(np.radians(cl[:,0])); G=float((cl[:,2]*wt).sum()/wt.sum())
+    cl=np.array([r[:8] for r in AJ['celulas']]); wt=np.cos(np.radians(cl[:,0])); G=float(AJ['globais']['slope']) if 'globais' in AJ else float((cl[:,2]*wt).sum()/wt.sum())
     def _fix(k):
         try: return k.encode('cp1252').decode('utf-8')
         except Exception: return k
     AJ['paises']={_fix(k):v for k,v in AJ['paises'].items()}
-    for i,c in enumerate(cs):
-        p=AJ['paises'].get(c['en']); c['air']=None
-        if not p: continue
+    def mk_air(p):
         f=float(np.sqrt((1+p['r1'])/(1-p['r1']))); lo=p['slope']-(p['slope']-p['lo'])*f; hi=p['slope']+(p['hi']-p['slope'])*f
-        c['air']=dict(s=round(p['slope'],2),lo=round(lo,2),hi=round(hi,2),rel=round(p['slope']-G,2),pd=round(p['pct_decada'],2),q=p['q'],r1=p['r1'],
-                      sa=int(p['q']<0.05 and lo>0),sr=int(G<lo or G>hi),an=p['anos'],se=p['serie_anual'])
-    AIRS=dict(G=round(G,2),periodo=AJ['periodo'],inst=AJ['instrumento'],nivel=AJ['nivel_hPa'])
+        return dict(s=round(p['slope'],2),lo=round(lo,2),hi=round(hi,2),rel=round(p['slope']-G,2),pd=round(p['pct_decada'],2),q=p['q'],r1=p['r1'],
+                    sa=int(p['q']<0.05 and lo>0),sr=int(G<lo or G>hi),an=p['anos'],se=p['serie_anual'])
+    for i,c in enumerate(cs):
+        p=AJ['paises'].get(c['en']); c['air']=mk_air(p) if p else None
+    AK=[(mk_air(AJ['continentes'][nm]) if nm in AJ.get('continentes',{}) else None) for nm,_,_ in CONT]
+    AC={}
+    for r in AJ['celulas']:
+        if len(r)>=10 and r[9]:
+            f_=float(np.sqrt((1+r[8])/(1-r[8]))); lo_=r[2]-(r[2]-r[3])*f_; hi_=r[2]+(r[4]-r[2])*f_
+            AC[f"{r[0]},{r[1]}"]=dict(s=round(r[2],2),lo=round(lo_,2),hi=round(hi_,2),q=r[6],sa=int(r[6]<0.05 and lo_>0),sr=int(G<lo_ or G>hi_),r1=r[8],se=r[9])
+    _v=[x for c in list(cs)+[{'air':k} for k in AK] if c.get('air') for x in c['air']['se'] if x is not None]
+    AIRS=dict(yr=[round(min(_v)),round(max(_v))],gse=AJ.get('serie_global'),anos=AJ.get('anos_celulas'),G=round(G,2),periodo=AJ['periodo'],inst=AJ['instrumento'],nivel=AJ['nivel_hPa'])
     print('AIRS: países com série',sum(1 for c in cs if c.get('air')),'| tendência global',round(G,2),'ppb/ano')
+VAL=None
+if os.path.exists('validacao.json'):
+    import base64,io
+    from PIL import Image
+    V=json.load(open('validacao.json',encoding='utf-8'))
+    for c in cs:
+        v=V['paises'].get(c['en']); c['val']=dict(a=v['airs'],s=v['s5p']) if v else None
+    img=''
+    if os.path.exists('validacao.png'):
+        im=Image.open('validacao.png').convert('RGB'); im=im.resize((760,int(im.height*760/im.width))); b=io.BytesIO(); im.save(b,'JPEG',quality=80); img='data:image/jpeg;base64,'+base64.b64encode(b.getvalue()).decode()
+    VAL=dict(ga=V['global_airs'],gs=V['global_s5p'],r=V['pearson'],rho=V['spearman'],conc=V['concordancia_sinal'],rp=V['pearson_paises'],n=V['n_celulas'],img=img)
+    print('Validação carregada: r =',V['pearson'])
 data={'cells':cells,'countries':cs,'geo':{'type':'FeatureCollection','features':gf},'top':top,'thr':[round(q1,1),round(q2,1)],
-      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS}
+      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'valid':VAL}
+json.dump({n:CONT[K[i]][0] for i,n in enumerate(names)},open('continentes.json','w',encoding='utf-8'),ensure_ascii=False)
 h=open('template.html').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
 open('index.html','w').write(h)
 print(len(cells),'células',len(h)//1024,'KB','países com dados',sum(c['nc']>0 for c in cs),'mar',int(d.sea.sum()),'fiável',round(d.ch.notna().mean(),2),q1,q2)

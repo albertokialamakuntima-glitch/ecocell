@@ -41,8 +41,8 @@ html,body{height:100%;overflow:hidden}
 <h2 id="hc" style="margin-top:16px"></h2><div class="tw"><table id="te"></table></div>
 <h2 style="margin-top:16px">Antes de escolher um local</h2>
 <p class="mut">1) Validar a fonte: fogachos de gás (VIIRS Nightfire), campos e blocos petrolíferos, aterros, pecuária. 2) Excluir zonas húmidas naturais (ex.: Sudd, bacia do Congo), onde o metano é natural e a EcoCell não é a solução. 3) Confirmar com mais de um período: a tendência só é usada quando é fisicamente plausível.</p></div></div>
-<div class="win gl wide" id="w-t"><div class="wh"><span>Tendência NASA (AIRS)</span><button class="b" data-x="t">×</button></div><div class="wb"><h2 id="ht"></h2><p class="mut" id="htp"></p>
-<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0"><span>abaixo da média global</span><div style="flex:1;height:10px;border-radius:5px;background:linear-gradient(90deg,#2166ac,#f7f7f7,#b2182b)"></div><span>acima</span></div><div class="tw"><table id="tt"></table></div></div></div><div id="lg" hidden></div>
+<div class="win gl wide" id="w-t"><div class="wh"><span>Tendência NASA (AIRS)</span><button class="b" data-x="t">×</button></div><div class="wb"><h2 id="ht"></h2><div id="hv"></div><p class="mut" id="htp"></p>
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0"><span>abaixo da média global</span><div style="flex:1;height:10px;border-radius:5px;background:linear-gradient(90deg,#2166ac,#f7f7f7,#b2182b)"></div><span>acima</span></div><h2 style="margin-top:8px">Continentes</h2><div class="tw"><table id="tk"></table></div><h2 style="margin-top:12px">Países</h2><div class="tw"><table id="tt"></table></div></div></div><div id="lg" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script>
 const D=__DATA__;
@@ -93,7 +93,7 @@ function cont(k){lvl=1;cur=k;renderLists();$('#back').textContent='← '+CN[k].n
  labels(s,p=>D.countries[p.i].k===k&&D.countries[p.i].a>CN[k].lt);
  const n=D.countries.filter(c=>c.k===k&&c.nc>0).length;
  crumbs([{t:'Mundo',fn:world},{t:CN[k].n}]);$('#back').style.display='';
- $('#info').innerHTML=`<h2>${CN[k].n}</h2><p class="mut">${n} países com dados de CH₄. Clica num país para ver as células.</p>`}
+ $('#info').innerHTML=`<h2>${CN[k].n}</h2><p class="mut">${n} países com dados de CH₄. Clica num país para ver as células.</p>${D.airsK&&D.airsK[k]?airsGen(D.airsK[k],'Tendência do continente: '+CN[k].n,'Média de todas as células de terra do continente.'):'<p class="mut">Tendência do continente: disponível depois de correr o airs_tendencias_mundo.py atualizado.</p>'}`}
 function world(){lvl=0;cur=-1;renderLists();paths.style('fill',fillOf);legend();cl.style('display',null);svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity);paths.style('opacity',null);cg.selectAll('path').remove();labels(1,()=>false);
  crumbs([{t:'Mundo'}]);$('#back').style.display='none';$('#info').innerHTML=WI}
 function go(i,cell){lvl=2;cur=D.countries[i].k;renderLists();curC=i;$('#back').textContent='← '+D.countries[i].n;$('#back').title='Voltar a '+CN[cur].n;paths.style('fill',fillOf);legend();cl.style('display','none');const cs=C.filter(c=>c.ci===i),bb=D.countries[i].b,p0=proj([bb[0],bb[3]]),p1=proj([bb[2],bb[1]]),x0=p0[0],x1=p1[0],y0=p0[1],y1=p1[1],
@@ -112,7 +112,7 @@ function show(c){lvl=3;$('#back').textContent=`← Célula ${c.lat.toFixed(1)}°
  <tr><td>Face à sua latitude</td><td>${c.an>=0?'+':''}${c.an.toFixed(1)} ppb</td></tr>
  <tr><td>Tendência</td><td>${c.ch==null?'não fiável (poucos dados válidos)':(c.ch>=0?'+':'')+c.ch.toFixed(2)+' % no período'}</td></tr>
  <tr><td>Pontuação hotspot</td><td>${c.sc.toFixed(2)} (nº ${c.rk} de ${C.length})</td></tr></table>
- <p class="mut">${c.sea?'Zona offshore: possível plataforma ou fogacho. Validar com VIIRS Nightfire.':'Em terra: possível fonte antropogénica. Validar e excluir zonas húmidas naturais.'}</p>${detective(c)}${airsBlock(c.ci)}<div id="sim"></div>`;sim(c);}
+ <p class="mut">${c.sea?'Zona offshore: possível plataforma ou fogacho. Validar com VIIRS Nightfire.':'Em terra: possível fonte antropogénica. Validar e excluir zonas húmidas naturais.'}</p>${detective(c)}${airsCell(c)}${airsBlock(c.ci,true)}<div id="sim"></div>`;sim(c);}
 const REF=[['Refinaria de Luanda',-8.78,13.3],['Refinaria de Cabinda (Malembo)',-5.33,12.18],['Ras Tanura',26.64,50.16],['Jamnagar',22.35,69.83],['Roterdão',51.89,4.32],['Port Arthur',29.88,-93.94],['Ulsan',35.49,129.33]];
 const hv=(a,b,c,d)=>{const r=Math.PI/180,x=Math.sin((c-a)*r/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin((d-b)*r/2)**2;return 12742*Math.asin(Math.sqrt(x))};
 function detective(c){const r=REF.map(f=>({n:f[0],d:hv(c.lat,c.lon,f[1],f[2])})).sort((a,b)=>a.d-b.d)[0];
@@ -140,25 +140,44 @@ function relayout(){W=innerWidth||W;H=innerHeight||H;S=Math.max(W/6.32,H/3.6);pr
  cl.each(function(){const p=proj([+this.dataset.lo,+this.dataset.la]);this.setAttribute('x',p[0]);this.setAttribute('y',p[1])});}
 let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(Math.abs(innerWidth-W)<40&&Math.abs(innerHeight-H)<150)return;relayout();lvl===0?world():lvl===1?cont(cur):lvl===2?go(curC):go(curC)},250)});
 setTimeout(()=>{if(innerWidth!==W||innerHeight!==H){relayout();world()}},400);
-function grafico(a){const w=330,h=120,p=26,ys=a.se.map((v,k)=>[a.an[k],v]).filter(x=>x[1]!=null),x0=d3.min(ys,d=>d[0]),x1=d3.max(ys,d=>d[0]),m=d3.mean(ys,d=>d[1]),
- lo=d3.min(ys,d=>d[1]),hi=d3.max(ys,d=>d[1]),X=v=>p+(v-x0)/(x1-x0)*(w-p-6),Y=v=>h-18-(v-lo)/(hi-lo||1)*(h-30),xm=(x0+x1)/2;
- return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto"><polyline fill="none" stroke="#1f7a4d" stroke-width="2" points="${ys.map(d=>X(d[0])+','+Y(d[1])).join(' ')}"/>
- <line x1="${X(x0)}" x2="${X(x1)}" y1="${Y(m+a.s*(x0-xm))}" y2="${Y(m+a.s*(x1-xm))}" stroke="#d2452f" stroke-width="2" stroke-dasharray="5 3"/>
- <text x="${p}" y="${h-4}" font-size="10" fill="currentColor">${x0}</text><text x="${w-6}" y="${h-4}" font-size="10" text-anchor="end" fill="currentColor">${x1}</text>
- <text x="2" y="12" font-size="10" fill="currentColor">${hi.toFixed(0)}</text><text x="2" y="${h-20}" font-size="10" fill="currentColor">${lo.toFixed(0)}</text></svg>`}
-function airsBlock(i){const a=D.countries[i].air,A=D.airs;if(!a||!A)return '<p class="mut">Sem série NASA AIRS para este país.</p>';const f=v=>(v>=0?'+':'')+v.toFixed(2);
- return `<h2 style="margin-top:14px">Tendência NASA AIRS, ${A.periodo[0].slice(0,4)}–${A.periodo[1].slice(0,4)}</h2>
+function grafico(a){const A=D.airs,w=340,H=96,p=30,g=A.G,ys=a.se.map((v,k)=>[a.an[k],v]).filter(x=>x[1]!=null),x0=d3.min(ys,d=>d[0]),x1=d3.max(ys,d=>d[0]),xm=(x0+x1)/2,m=d3.mean(ys,d=>d[1]),
+ X=v=>p+(v-x0)/(x1-x0)*(w-p-6),lo=Math.min(A.yr[0],d3.min(ys,d=>d[1])),hi=Math.max(A.yr[1],d3.max(ys,d=>d[1])),Y=v=>H-14-(v-lo)/(hi-lo)*(H-24),
+ dif=ys.map(d=>[d[0],d[1]-(m+g*(d[0]-xm))]),dm=Math.max(25,d3.max(dif,d=>Math.abs(d[1]))),T=H+18,Y2=v=>T+(H-14)-((v+dm)/(2*dm))*(H-24),md=d3.mean(dif,d=>d[1]),
+ L=(f,y,c,d)=>`<line x1="${X(x0)}" x2="${X(x1)}" y1="${y(f(x0))}" y2="${y(f(x1))}" stroke="${c}" stroke-width="2"${d?' stroke-dasharray="5 3"':''}/>`,tx=(x,y,s,an)=>`<text x="${x}" y="${y}" font-size="10" text-anchor="${an||'start'}" fill="currentColor">${s}</text>`;
+ return `<svg viewBox="0 0 ${w} ${2*H+22}" style="width:100%;height:auto">
+ <polyline fill="none" stroke="#1f7a4d" stroke-width="2" points="${ys.map(d=>X(d[0])+','+Y(d[1])).join(' ')}"/>${L(t=>m+g*(t-xm),Y,'#9aa5a0')}${L(t=>m+a.s*(t-xm),Y,'#d2452f',1)}
+ ${tx(2,Y(hi)+4,hi.toFixed(0))}${tx(2,Y(lo)+4,lo.toFixed(0))}${tx(X(x0),H+2,x0)}${tx(X(x1),H+2,x1,'end')}
+ ${tx(2,T-2,'diferença face à tendência global (ppb)')}<line x1="${X(x0)}" x2="${X(x1)}" y1="${Y2(0)}" y2="${Y2(0)}" stroke="#9aa5a0" stroke-width="1"/>
+ <polyline fill="none" stroke="#1f7a4d" stroke-width="2" points="${dif.map(d=>X(d[0])+','+Y2(d[1])).join(' ')}"/>${L(t=>md+(a.s-g)*(t-xm),Y2,'#d2452f',1)}
+ ${tx(2,Y2(dm)+4,'+'+dm.toFixed(0))}${tx(2,Y2(-dm)+4,'−'+dm.toFixed(0))}${tx(X(x0),2*H+20,x0)}${tx(X(x1),2*H+20,x1,'end')}</svg>`}
+function airsGen(a,tit,nota){const A=D.airs;if(!a||!A)return `<p class="mut">Sem série NASA AIRS para ${tit.split(': ').pop()}.</p>`;const f=v=>(v>=0?'+':'')+v.toFixed(2);
+ return `<h2 style="margin-top:14px">${tit}</h2>${nota?`<p class="mut" style="font-size:12px;margin:0">${nota}</p>`:''}
  <p style="font-size:13px;margin:4px 0"><b>O que muda:</b> o metano a ${A.nivel} hPa ${a.s>0?'sobe':'desce'}.<br><b>Quanto:</b> ${f(a.s)} ppb/ano (IC 95%: ${f(a.lo)} a ${f(a.hi)}), cerca de ${f(a.pd)}% por década.<br>
  <b>Significativo?</b> ${a.sa?'Sim':'Não'} (q ${a.q<0.001?'< 0,001':'= '+a.q.toFixed(3)}, com correção FDR e autocorrelação r₁ = ${a.r1}).<br>
  <b>Face à média global</b> (${f(A.G)} ppb/ano): ${f(a.rel)} ppb/ano, ${a.sr?'diferente da média global':'não diferente da média global'}.</p>${grafico(a)}
- <p class="mut" style="font-size:12px">Verde: anomalia anual sem sazonalidade. Tracejado: tendência de Sen. ${A.inst}.</p>`}
+ <p class="mut" style="font-size:12px">Em cima: anomalia anual (verde), tendência desta região (vermelho tracejado) e tendência global (cinzento), todas na mesma escala. Em baixo: quanto a região se afasta da tendência global. ${A.inst}.</p>`}
+function airsBlock(i,pais){return airsBlock0(i,pais)+(pais?valLinha(i):'')}
+function airsBlock0(i,pais){const c=D.countries[i];return airsGen(c.air,pais?'Tendência do país: '+c.n:'Tendência NASA AIRS, '+D.airs.periodo[0].slice(0,4)+'–'+D.airs.periodo[1].slice(0,4),pais?'Média de todas as células do país: igual para todas as células dele.':'')}
+function airsCell(c){const A=D.airs;if(!A)return '';const a=D.airsC&&D.airsC[(Math.floor(c.lat)+.5)+','+c.lon],f=v=>(v>=0?'+':'')+v.toFixed(2);
+ if(!a)return '<h2 style="margin-top:14px">Tendência NASA AIRS desta célula</h2><p class="mut" style="font-size:13px">Sem série própria para esta célula (o cálculo por célula ainda não foi carregado, ou a célula não tem dados AIRS). Abaixo está a tendência do país.</p>';
+ return `<h2 style="margin-top:14px">Tendência NASA AIRS desta célula</h2><p style="font-size:13px;margin:4px 0"><b>Quanto:</b> ${f(a.s)} ppb/ano (IC 95%: ${f(a.lo)} a ${f(a.hi)}).<br><b>Significativo?</b> ${a.sa?'Sim':'Não'} (q ${a.q<0.001?'< 0,001':'= '+a.q.toFixed(3)}, r₁ = ${a.r1}).<br><b>Face à média global</b> (${f(A.G)} ppb/ano): ${f(a.s-A.G)} ppb/ano, ${a.sr?'diferente':'não diferente'}.</p>${grafico({an:A.anos,se:a.se,s:a.s})}<p class="mut" style="font-size:12px">Célula AIRS de 1° que contém o centro desta célula. Mesmas escalas e legenda do gráfico do país.</p>`}
+function validBox(){const V=D.valid;if(!V)return '';const f=v=>(v>=0?'+':'')+v.toFixed(2).replace('.',','),n=v=>v.toFixed(2).replace('.',',');
+ return `<div style="border:1px solid var(--bd);border-radius:10px;padding:10px;margin:8px 0;font-size:13px"><b>Validação com um segundo satélite (2019–2026)</b><br>
+ <b>Subida global confirmada:</b> AIRS (NASA) ${f(V.ga)} ppb/ano e Sentinel-5P (ESA) ${f(V.gs)} ppb/ano. Dois instrumentos independentes dão praticamente o mesmo valor.<br>
+ <b>Diferenças entre regiões não confirmadas:</b> correlação r = ${n(V.r)} entre células e ${n(V.rp)} entre países, e o mesmo sinal em ${Math.round(V.conc*100)}% das células (50% é o acaso). Por isso não as apresentamos como resultado.
+ ${V.img?`<img src="${V.img}" alt="Dispersão AIRS contra Sentinel-5P" style="width:100%;margin-top:6px;border-radius:6px">`:''}</div>`}
+function valLinha(i){const v=D.countries[i].val;if(!v)return '';const f=x=>(x>=0?'+':'')+x.toFixed(2).replace('.',',');
+ return `<p style="font-size:12px"><b>Verificação independente</b> (2019–2026, face à média global): AIRS ${f(v.a)} e Sentinel-5P ${f(v.s)} ppb/ano, ${Math.sign(v.a)===Math.sign(v.s)?'no mesmo sentido':'em sentidos opostos'}.</p>`}
 function renderAirs(){const k=cur,nm=k<0?'Mundo':CN[k].n,A=D.airs;if(!A){$('#ht').textContent='Sem dados AIRS';return}
+ $('#hv').innerHTML=validBox();
  const rows=D.countries.map((c,i)=>({...c,i})).filter(c=>c.air&&(k<0||c.k===k)).sort((a,b)=>b.air.s-a.air.s),f=v=>(v>=0?'+':'')+v.toFixed(2);
  $('#ht').textContent='Tendência do metano — '+nm;
- $('#htp').textContent=`NASA Aqua AIRS, ${A.periodo[0]} a ${A.periodo[1]}, ${A.nivel} hPa. Tendência global: ${f(A.G)} ppb/ano. Todos os países sobem de forma significativa; a cor do mapa mostra quem sobe mais (vermelho) ou menos (azul) do que a média global. "Diferente" = o IC 95% do país não contém a média global. Cuidado: sobre gelo, neve, desertos e latitudes altas (Gronelândia, Canadá, Rússia) o AIRS mede com menos fiabilidade, por isso as diferenças aí pedem confirmação com outro instrumento.`;
+ $('#htp').textContent=`NASA Aqua AIRS, ${A.periodo[0]} a ${A.periodo[1]}, ${A.nivel} hPa. Tendência global: ${f(A.G)} ppb/ano. Todos os países sobem de forma significativa. A cor do mapa (vermelho acima, azul abaixo da média global) é só INDICATIVA: um segundo satélite não confirmou estas diferenças entre países. "Diferente" = o IC 95% do país não contém a média global. Cuidado: sobre gelo, neve, desertos e latitudes altas (Gronelândia, Canadá, Rússia) o AIRS mede com menos fiabilidade, por isso as diferenças aí pedem confirmação com outro instrumento.`;
+ $('#tk').innerHTML=D.airsK&&D.airsK.some(x=>x)?'<tr><th>Continente</th><th>ppb/ano</th><th>IC 95%</th><th>vs global</th><th>Diferente</th></tr>'+CN.map((c,k)=>D.airsK[k]?`<tr class="go" data-k="${k}"><td>${c.n}</td><td>${f(D.airsK[k].s)}</td><td>${f(D.airsK[k].lo)} a ${f(D.airsK[k].hi)}</td><td>${f(D.airsK[k].rel)}</td><td>${D.airsK[k].sr?'sim':'não'}</td></tr>`:'').join(''):'<tr><td class="mut">Disponível depois de correr o airs_tendencias_mundo.py atualizado.</td></tr>';
+ document.querySelectorAll('#tk tr.go').forEach(r=>r.onclick=()=>{tab('m');cont(+r.dataset.k)});
  $('#tt').innerHTML='<tr><th>#</th><th>País</th>'+(k<0?'<th>Continente</th>':'')+'<th>ppb/ano</th><th>IC 95%</th><th>vs global</th><th>Diferente</th></tr>'+rows.map((c,n)=>`<tr class="go" data-i="${c.i}"><td>${n+1}</td><td>${c.n}</td>${k<0?`<td>${CN[c.k].n}</td>`:''}<td>${f(c.air.s)}</td><td>${f(c.air.lo)} a ${f(c.air.hi)}</td><td>${f(c.air.rel)}</td><td>${c.air.sr?'sim':'não'}</td></tr>`).join('');
  document.querySelectorAll('#tt tr.go').forEach(r=>r.onclick=()=>{tab('m');go(+r.dataset.i)})}
-$('#btnL').onclick=()=>{layer=layer==='n'?'t':'n';$('#btnL').textContent=layer==='t'?'Mapa: tendência':'Mapa: natural';paths.style('fill',fillOf);if(layer==='t')openWin('t',true)};
+$('#btnL').onclick=()=>{layer=layer==='n'?'t':'n';$('#btnL').textContent=layer==='t'?'Mapa: tendência (indicativo)':'Mapa: natural';paths.style('fill',fillOf);if(layer==='t')openWin('t',true)};
 $('#back').onclick=()=>lvl===3?go(curC):lvl===2?cont(cur):world();
 function openWin(id,on){const w=$('#w-'+id),open=on===undefined?!w.classList.contains('on'):on;document.querySelectorAll('.win').forEach(x=>x.classList.remove('on'));if(open)w.classList.add('on')}
 function tab(t){openWin(t==='m'?'i':t,true)}
