@@ -117,8 +117,19 @@ if os.path.exists('validacao.json'):
         im=Image.open('validacao.png').convert('RGB'); im=im.resize((760,int(im.height*760/im.width))); b=io.BytesIO(); im.save(b,'JPEG',quality=80); img='data:image/jpeg;base64,'+base64.b64encode(b.getvalue()).decode()
     VAL=dict(ga=V['global_airs'],gs=V['global_s5p'],r=V['pearson'],rho=V['spearman'],conc=V['concordancia_sinal'],rp=V['pearson_paises'],n=V['n_celulas'],img=img)
     print('Validação carregada: r =',V['pearson'])
+GP=None
+if os.path.exists('gpm_trends.json'):
+    from shapely import contains_xy as _cx
+    G=json.load(open('gpm_trends.json',encoding='utf-8'))
+    ce=np.array([c for c in G['celulas'] if c[3]==1 and abs(c[0])<=60],dtype=float)
+    for i,sh in enumerate(shp):
+        m=_cx(sh,ce[:,1],ce[:,0])&(ce[:,4]>=300)
+        if m.any(): cs[i]['gpm']=dict(h=int((ce[m,2]>0).sum()),s=int((ce[m,2]<0).sum()))
+    GP=dict(periodo=G['periodo'],n=G['n_celulas'],sigpct=G['sig_pct'],h=int((ce[:,2]>0).sum()),s=int((ce[:,2]<0).sum()),med=round(float(np.median(np.abs(ce[:,2]))),1),
+            lig=G['ligacao'],cells=[[float(r[0]),float(r[1]),round(float(r[2]),1)] for r in ce])
+    print('GPM: células significativas (<=60°):',len(ce),'| mais húmidas',GP['h'],'| mais secas',GP['s'])
 data={'cells':cells,'countries':cs,'geo':{'type':'FeatureCollection','features':gf},'top':top,'thr':[round(q1,1),round(q2,1)],
-      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'ptmap':{v:k for k,v in PT.items()},'noaa':(json.load(open('noaa_vs_airs.json',encoding='utf-8')) if os.path.exists('noaa_vs_airs.json') else None),'valid':VAL,'per':(json.load(open('periodos.json',encoding='utf-8')) if os.path.exists('periodos.json') else None)}
+      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'ptmap':{v:k for k,v in PT.items()},'noaa':(json.load(open('noaa_vs_airs.json',encoding='utf-8')) if os.path.exists('noaa_vs_airs.json') else None),'gpm':GP,'valid':VAL,'per':(json.load(open('periodos.json',encoding='utf-8')) if os.path.exists('periodos.json') else None)}
 json.dump({n:CONT[K[i]][0] for i,n in enumerate(names)},open('continentes.json','w',encoding='utf-8'),ensure_ascii=False)
 h=open('template.html').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
 open('index.html','w').write(h)
