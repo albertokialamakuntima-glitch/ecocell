@@ -5,7 +5,7 @@ from shapely.ops import transform
 from shapely.strtree import STRtree
 PT={'Algeria': 'Argélia', 'Benin': 'Benim', 'Botswana': 'Botsuana', 'Cameroon': 'Camarões', 'Central African Rep.': 'Rep. Centro-Africana', 'Chad': 'Chade', 'Comoros': 'Comores', 'Dem. Rep. Congo': 'RD Congo', 'Djibouti': 'Jibuti', 'Egypt': 'Egipto', 'Eq. Guinea': 'Guiné Equatorial', 'Eritrea': 'Eritreia', 'eSwatini': 'Essuatíni', 'Ethiopia': 'Etiópia', 'Gabon': 'Gabão', 'Gambia': 'Gâmbia', 'Ghana': 'Gana', 'Guinea': 'Guiné', 'Guinea-Bissau': 'Guiné-Bissau', "Côte d'Ivoire": 'Costa do Marfim', 'Kenya': 'Quénia', 'Lesotho': 'Lesoto', 'Liberia': 'Libéria', 'Libya': 'Líbia', 'Madagascar': 'Madagáscar', 'Malawi': 'Maláui', 'Mauritania': 'Mauritânia', 'Mauritius': 'Maurícia', 'Morocco': 'Marrocos', 'Mozambique': 'Moçambique', 'Namibia': 'Namíbia', 'Niger': 'Níger', 'Nigeria': 'Nigéria', 'Rwanda': 'Ruanda', 'São Tomé and Principe': 'São Tomé e Príncipe', 'Seychelles': 'Seicheles', 'Sierra Leone': 'Serra Leoa', 'Somalia': 'Somália', 'Somaliland': 'Somalilândia', 'South Africa': 'África do Sul', 'S. Sudan': 'Sudão do Sul', 'Sudan': 'Sudão', 'Tanzania': 'Tanzânia', 'Tunisia': 'Tunísia', 'W. Sahara': 'Saara Ocidental', 'Zambia': 'Zâmbia', 'Zimbabwe': 'Zimbábue'}
 d=pd.read_csv('cells.csv').drop_duplicates(['lat','lon']).reset_index(drop=True)
-M=json.load(open('meta.json'));from datetime import date;DAYS=(date.fromisoformat(M['end'])-date.fromisoformat(M['start'])).days
+META=json.load(open('meta.json'));from datetime import date;DAYS=(date.fromisoformat(META['end'])-date.fromisoformat(META['start'])).days
 if 'recent' not in d: d['recent']=np.nan
 print('células fundidas',len(d))
 def fix(s):
@@ -135,7 +135,7 @@ if os.path.exists('gpm_trends.json'):
         if pp: c['gpmS']=dict(s=pp['serie'],sl=pp['slope'],lo=pp['lo'],hi=pp['hi'],q=pp['q'],pd=pp['pct_decada'],sig=pp['sig'],m=pp['media'])
     print('GPM: células significativas (<=60°):',len(ce),'| mais húmidas',GP['h'],'| mais secas',GP['s'])
 data={'cells':cells,'countries':cs,'geo':{'type':'FeatureCollection','features':gf},'top':top,'thr':[round(q1,1),round(q2,1)],
-      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'ptmap':{v:k for k,v in PT.items()},'noaa':(json.load(open('noaa_vs_airs.json',encoding='utf-8')) if os.path.exists('noaa_vs_airs.json') else None),'gpm':GP,'valid':VAL,'per':(json.load(open('periodos.json',encoding='utf-8')) if os.path.exists('periodos.json') else None)}
+      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'ptmap':{v:k for k,v in PT.items()},'noaa':(json.load(open('noaa_vs_airs.json',encoding='utf-8')) if os.path.exists('noaa_vs_airs.json') else None),'gpm':GP,'meta':dict(built=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).strftime('%Y-%m-%d %H:%M'),end=(META['end'] if 'META' in globals() else None)),'valid':VAL,'per':(json.load(open('periodos.json',encoding='utf-8')) if os.path.exists('periodos.json') else None)}
 json.dump({n:CONT[K[i]][0] for i,n in enumerate(names)},open('continentes.json','w',encoding='utf-8'),ensure_ascii=False)
 h=open('template.html').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
 open('index.html','w').write(h)
