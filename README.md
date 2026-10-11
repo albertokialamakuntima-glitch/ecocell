@@ -1,16 +1,26 @@
-# EcoCell Earth Intelligence — atualização diária
+# EcoCell Earth Intelligence: reprodução dos números
 
-O site fica em `docs/index.html` e é reconstruído todos os dias com o CH4 mais recente do Sentinel-5P.
+Este diretório contém os scripts que geram todos os resultados do mapa. Cada passo produz um ficheiro que o passo seguinte usa.
 
-## Montar (uma vez)
-1. Cria um repositório no GitHub e sobe esta pasta inteira.
-2. Google Cloud: cria uma *service account*, ativa a Earth Engine API, gera uma chave JSON e regista a conta em https://code.earthengine.google.com/register (projeto não comercial).
-3. No GitHub, em Settings > Secrets > Actions, cria `EE_SERVICE_ACCOUNT_JSON` (o conteúdo do JSON) e `EE_PROJECT` (o teu Project ID).
-4. Settings > Pages: fonte "Deploy from a branch", pasta `/docs`.
-5. Actions > "Atualização diária" > Run workflow, para testar já.
+## Dados usados
+- **Metano (NASA Aqua AIRS)**: produto AIRS3STM v7.0 (nível 3 mensal, 1°), obtido no GES DISC, nível de 400 hPa, 2002-09 a 2026-08.
+- **Chuva (NASA/JAXA GPM)**: IMERG mensal V07 (DOI 10.5067/GPM/IMERG/3B-MONTH/07), totais anuais 2003–2024, lido pelo Google Earth Engine.
+- **Verificação externa (não são variáveis do desafio)**: ESA Sentinel-5P (via Earth Engine) e NOAA GML (média global mensal de metano).
 
-## Horário
-O GitHub corre às 23:00 UTC, que são 00:00 em Luanda. Pode atrasar uns minutos. Os dados do Sentinel-5P (OFFL) chegam ao Earth Engine com alguns dias de atraso, por isso "atualizar todos os dias" traz a última data disponível.
+## Ordem de execução
+1. `airs_baixar.py` descarrega o AIRS e cria `airs_ch4_400hPa.npz` (precisa de um token do Earthdata em `EARTHDATA_TOKEN`).
+2. `airs_tendencias_mundo.py` (precisa de `world.json` e `continentes.json`) cria `airs_trends.json`: tendência de Sen, Mann-Kendall com correção de autocorrelação e FDR, por célula, país e continente.
+3. `airs_periodos.py` cria `periodos.json`: tendência por período, aceleração (bootstrap) e faixas de latitude.
+4. `gpm_exportar.py` cria `gpm_anual_1deg.csv` (precisa do Earth Engine); `gpm_analise.py` cria `gpm_trends.json`.
+5. `s5p_tendencia_2019.py` cria `s5p_slope_2019_2026.csv`; `comparar_s5p_airs.py` cria `validacao.json`.
+6. `noaa_vs_airs.py` (precisa de `ch4_mm_gl.csv`, descarregado em https://gml.noaa.gov/ccgg/trends_ch4/) cria `noaa_vs_airs.json`.
+7. `build_site.py` junta tudo e gera `index.html`. `daily_update.py` atualiza só a camada de apoio do Sentinel-5P.
 
-## Alternativa só no teu PC (Windows)
-`schtasks /create /tn EcoCell /tr "py C:\caminho\daily_update.py" /sc daily /st 00:00` e depois `py build_site.py`. O PC tem de estar ligado.
+## Requisitos
+Python 3.12, `numpy`, `scipy`, `pandas`, `shapely>=2`, `matplotlib`, `earthaccess`, `netCDF4`, `xarray`, `pydap`, `earthengine-api`.
+
+## Limites
+O AIRS capta cerca de 45% da amplitude do crescimento medido à superfície; as diferenças regionais do AIRS não foram confirmadas pelo Sentinel-5P; no IMERG, oceanos e latitudes altas são menos fiáveis. Ver a janela "Métodos e fontes" do mapa.
+
+## Como citar
+Ver `CITATION.cff` na raiz do repositório.

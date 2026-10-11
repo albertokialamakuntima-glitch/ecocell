@@ -138,7 +138,20 @@ data={'cells':cells,'countries':cs,'geo':{'type':'FeatureCollection','features':
       'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'ptmap':{v:k for k,v in PT.items()},'noaa':(json.load(open('noaa_vs_airs.json',encoding='utf-8')) if os.path.exists('noaa_vs_airs.json') else None),'gpm':GP,'meta':dict(built=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).strftime('%Y-%m-%d %H:%M'),end=(META['end'] if 'META' in globals() else None)),'gpmT':(json.load(open('gpm_tempo.json')) if os.path.exists('gpm_tempo.json') else None),'valid':VAL,'per':(json.load(open('periodos.json',encoding='utf-8')) if os.path.exists('periodos.json') else None)}
 json.dump({n:CONT[K[i]][0] for i,n in enumerate(names)},open('continentes.json','w',encoding='utf-8'),ensure_ascii=False)
 h=open('template.html').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
-open('index.html','w').write(h)
+_OUT='index.html'
+open(_OUT,'w').write(h)
+_dir=os.path.dirname(os.path.abspath(_OUT))
+_v=D_built if 'D_built' in globals() else __import__('datetime').datetime.now().strftime('%Y%m%d%H%M')
+open(os.path.join(_dir,'sw.js'),'w').write("const C='ecocell-"+_v+"';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png']).catch(()=>{})).then(()=>self.skipWaiting()))});self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r}).catch(()=>caches.match(e.request).then(m=>m||caches.match('index.html'))))});")
+json.dump({'name':'EcoCell Earth Intelligence','short_name':'EcoCell','start_url':'./','scope':'./','display':'standalone','background_color':'#5fd0e6','theme_color':'#5fd0e6','icons':[{'src':'icon-192.png','sizes':'192x192','type':'image/png'},{'src':'icon-512.png','sizes':'512x512','type':'image/png'}]},open(os.path.join(_dir,'manifest.webmanifest'),'w'))
+try:
+    import base64,io,re as _re
+    from PIL import Image
+    _b=_re.search(r'id="logo"[^>]*src="data:image/png;base64,([^"]+)"',h).group(1)
+    _im=Image.open(io.BytesIO(base64.b64decode(_b))).convert('RGBA')
+    for _n in (192,512):
+        _c=Image.new('RGBA',(_n,_n),(95,208,230,255)); _k=int(_n*0.78); _r=_im.resize((_k,int(_k*_im.height/_im.width))); _c.paste(_r,((_n-_r.width)//2,(_n-_r.height)//2),_r); _c.convert('RGB').save(os.path.join(_dir,f'icon-{_n}.png'))
+except Exception as _e: print('ícones não gerados:',_e)
 print(len(cells),'células',len(h)//1024,'KB','países com dados',sum(c['nc']>0 for c in cs),'mar',int(d.sea.sum()),'fiável',round(d.ch.notna().mean(),2),q1,q2)
 print(d.sort_values('rk').head(10).assign(c=lambda x:x.ci.map(lambda i:names[i]))[['c','lat','lon','sea','an','ch','sc']].round(2).to_string())
 print('sem dados (grandes):',[(names[i],round(c['a'])) for i,c in enumerate(cs) if c['nc']==0 and c['a']>40])

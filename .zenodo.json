@@ -1,0 +1,7 @@
+{
+  "title": "EcoCell Earth Intelligence: tendências do metano (NASA AIRS) e da chuva (NASA GPM)",
+  "upload_type": "software",
+  "description": "Mapa interativo que analisa duas variáveis da NASA (metano do AIRS e chuva do GPM IMERG) ao longo de mais de 20 anos, com tendências, significância estatística e verificação com outros instrumentos.",
+  "creators": [{"name": "Quiala Makuntima, Alberto"}],
+  "keywords": ["metano", "precipitação", "NASA AIRS", "GPM IMERG", "tendências", "Space Apps"]
+}
