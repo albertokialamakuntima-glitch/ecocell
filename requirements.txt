@@ -1,7 +1,7 @@
-   earthengine-api
-   numpy
-   pandas
-   shapely>=2
-   pycountry
-   pycountry-convert
-   pillow
+earthengine-api
+numpy
+pandas
+shapely>=2
+pycountry
+pycountry-convert
+pillow
