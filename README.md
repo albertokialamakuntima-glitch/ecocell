@@ -6,8 +6,8 @@ Núcleo científico, em Python, do EcoCell Earth Intelligence: balanços de mass
 
 ## Executar
 ```
-pip install -r requirements.txt
-python -m pytest -q          # 17 testes
+pip install -r requirements-engine.txt
+python -m pytest -q          # 26 testes
 python demo_cenarios.py      # grava resultados_cenarios.json e relatorio_cenarios.md
 ```
 
@@ -19,6 +19,9 @@ python demo_cenarios.py      # grava resultados_cenarios.json e relatorio_cenari
 - **E) Amónia:** só o limite estequiométrico (2 mol de NH3 por 3 mol de H2). Não ocorre no biorreator.
 - **F) Balanço global:** emissões evitadas em duas contabilidades: otimista (carbono dos produtos retido) e conservadora (todo o carbono consumido volta como CO2). GWP100 do CH4 = 29,8 (IPCC AR6, fóssil).
 
+## Motor de prioridade (`recommendation_engine.py`)
+Pontuação explicável de 0 a 100 para ordenar zonas a investigar, com pesos configuráveis (anomalia 40, persistência 25, qualidade dos dados 20, proximidade a fontes conhecidas 15). **Não é uma probabilidade nem prova de emissão.** Sem dados industriais da fonte, recomenda recolher dados antes de estimar o potencial. Os testes verificam que o resultado coincide com o do mapa (JavaScript) em 208 células.
+
 ## Gémeo digital
 `compare_scenarios` corre referência (EcoCell desligado), conservador e otimizado. `breakeven_f_e` calcula a recuperação de eletrões necessária para a eletricidade bruta igualar o consumo auxiliar.
 
@@ -27,3 +30,6 @@ python demo_cenarios.py      # grava resultados_cenarios.json e relatorio_cenari
 - A estequiometria de O2 é um parâmetro único (mol de O2 por mol de CH4).
 - Não distingue concentração atmosférica de caudal de emissão: o caudal de gás tem de vir de dados da instalação.
 - Os parâmetros biológicos são ordens de grandeza, a substituir por dados experimentais.
+
+## Motor de prioridade (recommendation_engine.py)
+Duas pontuações de propósito. A **prioridade de investigação** usa só satélite (anomalia, tendência fiável, qualidade dos dados, proximidade a instalações conhecidas), com pesos editáveis e uma banda de incerteza heurística de ±5 a ±30 pontos. A **prioridade de aplicação do EcoCell** só existe se houver dados da instalação (caudal e composição do gás); sem eles devolve "dados insuficientes" e a recomendação é recolher dados. A pontuação é um índice de priorização, não uma probabilidade científica.
