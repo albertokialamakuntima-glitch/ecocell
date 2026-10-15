@@ -12,12 +12,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install -r requirements.txt
-      - run: python daily_update.py && python build_site.py
+        with:
+          python-version: "3.12"
+      - name: Mostrar o requirements.txt do repositório (diagnóstico)
+        run: |
+          echo "--- requirements.txt ---"
+          cat requirements.txt || echo "(não existe)"
+      - name: Instalar dependências (lista explícita, não depende do requirements.txt)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install earthengine-api numpy pandas "shapely>=2" pycountry pycountry-convert pillow
+          python -c "import ee, numpy, pandas, shapely, pycountry, pycountry_convert, PIL; print('earthengine-api', ee.__version__, '| shapely', shapely.__version__)"
+      - name: Atualizar os dados e reconstruir o site
+        run: python daily_update.py && python build_site.py
         env:
           EE_SERVICE_ACCOUNT_JSON: ${{ secrets.EE_SERVICE_ACCOUNT_JSON }}
           EE_PROJECT: ${{ secrets.EE_PROJECT }}
-      - run: |
-          git config user.name "github-actions"; git config user.email "actions@github.com"
-          git add -A; git commit -m "dados $(date -u +%F)" || exit 0; git push
+      - name: Guardar as alterações
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "dados $(date -u +%F)" || exit 0
+          git push
