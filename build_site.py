@@ -1,3 +1,18 @@
+# --- arranque: instala sozinho o que faltar (funciona mesmo que o requirements.txt ou o workflow estejam errados) ---
+import sys, subprocess, importlib
+def _garantir(modulo, pacote):
+    try:
+        importlib.import_module(modulo)
+    except ImportError:
+        print(f"[arranque] a instalar {pacote} ...", flush=True)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", pacote])
+for _m, _p in (("numpy", "numpy"), ("pandas", "pandas"), ("shapely", "shapely>=2"), ("pycountry", "pycountry"), ("pycountry_convert", "pycountry-convert"), ("PIL", "pillow")):
+    _garantir(_m, _p)
+try:
+    from shapely import contains_xy  # exige shapely 2 ou superior
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "--upgrade", "shapely>=2"])
+# --- fim do arranque ---
 import os,json,re,glob,numpy as np,pandas as pd,shapely,pycountry
 import pycountry_convert as pc
 from shapely.geometry import shape,mapping,MultiPolygon,box

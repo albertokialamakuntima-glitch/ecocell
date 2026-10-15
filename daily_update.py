@@ -1,3 +1,14 @@
+# --- arranque: instala sozinho o que faltar (funciona mesmo que o requirements.txt ou o workflow estejam errados) ---
+import sys, subprocess, importlib
+def _garantir(modulo, pacote):
+    try:
+        importlib.import_module(modulo)
+    except ImportError:
+        print(f"[arranque] a instalar {pacote} ...", flush=True)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", pacote])
+for _m, _p in (("ee", "earthengine-api"), ("numpy", "numpy"), ("pandas", "pandas")):
+    _garantir(_m, _p)
+# --- fim do arranque ---
 """Atualiza cells.csv com o CH4 mais recente do Sentinel-5P (Google Earth Engine).
 O cálculo pesado corre como TAREFAS em segundo plano (exportação para assets do Earth Engine),
 sem limite de 5 minutos. Depois só se descarregam os resultados já calculados.
