@@ -8,13 +8,18 @@ Uso:   py variaveis_exportar.py              (todas)
        py variaveis_exportar.py lst ndvi     (só algumas)
 Precisa: earthengine-api numpy  e o teu login do Earth Engine (o mesmo dos outros scripts).
 """
-import sys, io, os, time, urllib.request
+import sys, io, os, json, time, urllib.request
 import numpy as np
 import ee
 
-PROJECT = os.environ.get("EE_PROJECT", "banded-lexicon-509920-b4")
-ee.Initialize(project=PROJECT)
-ANOS = list(range(2003, 2025))   # anos completos comuns a quase todas as missões
+PROJECT = os.environ.get("EE_PROJECT") or "banded-lexicon-509920-b4"
+if os.environ.get("EE_SERVICE_ACCOUNT_JSON"):                   # GitHub Actions: conta de serviço guardada nos segredos
+    k = json.loads(os.environ["EE_SERVICE_ACCOUNT_JSON"])
+    ee.Initialize(ee.ServiceAccountCredentials(k["client_email"], key_data=os.environ["EE_SERVICE_ACCOUNT_JSON"]), project=PROJECT)
+else:
+    ee.Initialize(project=PROJECT)
+import datetime
+ANOS = list(range(2003, datetime.datetime.now(datetime.timezone.utc).year))   # de 2003 até ao último ano completo (avança sozinho em janeiro)
 
 def mod(col, banda, f, mascara=None):
     def prep(i):
@@ -28,6 +33,7 @@ VARS = {
  "lst":   dict(c=lambda: mod("MODIS/061/MOD11A2", "LST_Day_1km", lambda x: x.multiply(0.02).subtract(273.15)), n=20),
  "ndvi":  dict(c=lambda: mod("MODIS/061/MOD13A2", "NDVI", lambda x: x.multiply(0.0001)), n=12),
  "et":    dict(c=lambda: mod("MODIS/061/MOD16A2GF", "ET", lambda x: x.multiply(0.1 * 46), lambda x: x.lt(32700)), n=20),   # kg/m²/8 dias -> mm/ano
+ "chuva": dict(c=lambda: mod("NASA/GPM_L3/IMERG_MONTHLY_V07", "precipitation", lambda x: x.multiply(8766)), n=10),   # mm/h (média do mês) -> mm/ano
  "tar":   dict(c=lambda: mod("NASA/FLDAS/NOAH01/C/GL/M/V001", "Tair_f_tavg", lambda x: x.subtract(273.15)), n=10),
  "solo":  dict(c=lambda: mod("NASA/FLDAS/NOAH01/C/GL/M/V001", "SoilMoi00_10cm_tavg", lambda x: x), n=10),
  "agua":  dict(c=lambda: mod("NASA/GRACE/MASS_GRIDS_V04/MASCON_CRI", "lwe_thickness", lambda x: x), n=6),

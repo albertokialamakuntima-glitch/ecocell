@@ -39,7 +39,7 @@ LON, LAT = np.meshgrid(lon, lat); W = np.cos(np.radians(LAT))
 # ---------- dados: tudo para cubos (anos, 180, 360), norte em cima ----------
 cubos = {}
 z = np.load("variaveis_anuais.npz"); anos = [int(a) for a in z["anos"]]
-for k in ["tar", "lst", "ndvi", "et", "solo", "agua", "sst", "clor"]:
+for k in ["tar", "lst", "ndvi", "et", "solo", "agua", "sst", "clor"]:   # (a chuva é lida mais abaixo)
     if k in z.files:
         fim = META[k].get("ate", anos[-1]); s = [i for i, a in enumerate(anos) if a <= fim]
         cubos[k] = ([anos[i] for i in s], z[k][s].astype("float64"))
@@ -52,7 +52,8 @@ if os.path.exists("airs_ch4_400hPa.npz"):                       # metano: meses 
         cub.append(np.nanmean(A[s], 0) if len(s) >= 10 else np.full((180, 360), np.nan))
     ok = [i for i, y in enumerate(aa) if len([m for m in ms if m.startswith(str(y))]) >= 10]
     cubos["ch4"] = ([aa[i] for i in ok], np.array([cub[i] for i in ok]))
-if os.path.exists("gpm_anual_1deg.csv"):                        # chuva: tabela (lat, lon, y2003...) -> cubo
+if "chuva" in z.files: cubos["chuva"] = (anos, z["chuva"].astype("float64"))   # chuva do GPM pelo Earth Engine (variaveis_exportar.py)
+elif os.path.exists("gpm_anual_1deg.csv"):                      # ou da tabela antiga (lat, lon, y2003...) -> cubo
     import csv
     rd = list(csv.reader(open("gpm_anual_1deg.csv", encoding="utf-8"))); cab = rd[0]; ya = [int(c[1:]) for c in cab[2:]]
     C = np.full((len(ya), 180, 360), np.nan)
@@ -60,6 +61,10 @@ if os.path.exists("gpm_anual_1deg.csv"):                        # chuva: tabela 
         la, lo = float(r[0]), float(r[1]); i = int(np.clip(np.floor(90 - la), 0, 179)); j = int(np.clip(np.floor(lo + 180), 0, 359))
         C[:, i, j] = [float(x) if x not in ("", "nan") else np.nan for x in r[2:]]
     cubos["chuva"] = (ya, C)
+for k, (ya, cubo) in list(cubos.items()):   # tira os anos finais sem dados (a fonte ainda não tem o ano completo), para não anunciar anos que não existem
+    cobre = np.isfinite(cubo).reshape(len(ya), -1).sum(1); n = len(ya)
+    while n > 1 and cobre[n - 1] < 0.5 * cobre[:n - 1].max(): n -= 1
+    cubos[k] = (ya[:n], cubo[:n])
 
 # ---------- países: a que país pertence o centro de cada célula ----------
 from shapely.geometry import MultiPolygon, box
@@ -159,5 +164,11 @@ for k, M in META.items():
     json.dump(dict(id=k, anos=ya, prec=prec, cel=idx.tolist(), s=np.round(S, 5).tolist(), lo=np.round(L, 5).tolist(), hi=np.round(H, 5).tolist(),
                    q=np.round(q, 5).tolist(), med=np.round(media, M["d"] + 2).tolist(), serie=b64(Q.T)), open(f"vars/{k}.json", "w", encoding="utf-8"), separators=(",", ":"))
     print(f"{k:6s} {len(idx):6d} células | sobe {sobe:5.1f} % | desce {desce:5.1f} % da área (significativo) | global {G[0]:+.3f} {M['tr']} (p={G[3]:.3g}) | {len(paises)} países")
+# variáveis sem dados nesta execução (ex.: o metano do AIRS na atualização automática, que não tem o ficheiro local): mantém as anteriores
+if os.path.exists("variaveis.json"):
+    feitos = {v["id"] for v in saida["vars"]}
+    for v in json.load(open("variaveis.json", encoding="utf-8")).get("vars", []):
+        if v["id"] not in feitos and v["id"] in META and os.path.exists(f"vars/{v['id']}.json"): saida["vars"].append(v); print("mantida a versão anterior de", v["id"])
+    ordem = list(META); saida["vars"].sort(key=lambda v: ordem.index(v["id"]))
 json.dump(saida, open("variaveis.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 print("Gravado variaveis.json e vars/*.json")

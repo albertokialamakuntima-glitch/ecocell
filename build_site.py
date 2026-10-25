@@ -124,7 +124,8 @@ if os.path.exists(AIRS_FILE):
     AIRS=dict(yr=[round(min(_v)),round(max(_v))],gse=AJ.get('serie_global'),anos=AJ.get('anos_celulas'),G=round(G,2),periodo=AJ['periodo'],inst=AJ['instrumento'],nivel=AJ['nivel_hPa'])
     print('AIRS: países com série',sum(1 for c in cs if c.get('air')),'| tendência global',round(G,2),'ppb/ano')
 VAL=None
-if os.path.exists('validacao.json'):
+SO_NASA=os.environ.get('ECOCELL_SO_NASA','1')=='1'   # o site usa só dados da NASA: sem a verificação com o Sentinel-5P (ESA) nem com a NOAA
+if not SO_NASA and os.path.exists('validacao.json'):
     import base64,io
     from PIL import Image
     V=json.load(open('validacao.json',encoding='utf-8'))
@@ -144,13 +145,13 @@ if os.path.exists('gpm_trends.json'):
         m=_cx(sh,ce[:,1],ce[:,0])&(ce[:,4]>=300)
         if m.any(): cs[i]['gpm']=dict(h=int((ce[m,2]>0).sum()),s=int((ce[m,2]<0).sum()))
     GP=dict(periodo=G['periodo'],n=G['n_celulas'],sigpct=G['sig_pct'],h=int((ce[:,2]>0).sum()),s=int((ce[:,2]<0).sum()),med=round(float(np.median(np.abs(ce[:,2]))),1),
-            lig=G['ligacao'],cells=[[float(r[0]),float(r[1]),round(float(r[2]),1),int(r[4])] for r in ce],ex=G.get('exemplos',[]),anos=list(range(G['periodo'][0],G['periodo'][1]+1)))
+            lig=None if SO_NASA else G['ligacao'],cells=[[float(r[0]),float(r[1]),round(float(r[2]),1),int(r[4])] for r in ce],ex=G.get('exemplos',[]),anos=list(range(G['periodo'][0],G['periodo'][1]+1)))
     for c in cs:
         pp=G['paises'].get(c['en'])
         if pp: c['gpmS']=dict(s=pp['serie'],sl=pp['slope'],lo=pp['lo'],hi=pp['hi'],q=pp['q'],pd=pp['pct_decada'],sig=pp['sig'],m=pp['media'])
     print('GPM: células significativas (<=60°):',len(ce),'| mais húmidas',GP['h'],'| mais secas',GP['s'])
 data={'cells':cells,'countries':cs,'geo':{'type':'FeatureCollection','features':gf},'top':top,'thr':[round(q1,1),round(q2,1)],
-      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'ptmap':{v:k for k,v in PT.items()},'noaa':(json.load(open('noaa_vs_airs.json',encoding='utf-8')) if os.path.exists('noaa_vs_airs.json') else None),'gpm':GP,'meta':dict(built=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).strftime('%Y-%m-%d %H:%M'),end=(META['end'] if 'META' in globals() else None)),'gpmT':(json.load(open('gpm_tempo.json')) if os.path.exists('gpm_tempo.json') else None),'valid':VAL,'per':(json.load(open('periodos.json',encoding='utf-8')) if os.path.exists('periodos.json') else None),
+      'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'ptmap':{v:k for k,v in PT.items()},'noaa':None if SO_NASA else (json.load(open('noaa_vs_airs.json',encoding='utf-8')) if os.path.exists('noaa_vs_airs.json') else None),'gpm':GP,'meta':dict(built=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).strftime('%Y-%m-%d %H:%M'),end=(META['end'] if 'META' in globals() else None)),'gpmT':(json.load(open('gpm_tempo.json')) if os.path.exists('gpm_tempo.json') else None),'valid':VAL,'per':(json.load(open('periodos.json',encoding='utf-8')) if os.path.exists('periodos.json') else None),
       'vars':(json.load(open('variaveis.json',encoding='utf-8')) if os.path.exists('variaveis.json') else None)}   # seletor de variáveis (variaveis_tendencias.py); as séries por célula ficam em vars/*.json
 json.dump({n:CONT[K[i]][0] for i,n in enumerate(names)},open('continentes.json','w',encoding='utf-8'),ensure_ascii=False)
 h=open('template.html',encoding='utf-8').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
