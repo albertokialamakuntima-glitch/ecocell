@@ -63,7 +63,15 @@ html,body{height:100%;overflow:hidden}
 #ecoVoo[data-ex="n"] .bc-n,#ecoVoo[data-ex="p"] .bc-n,#ecoVoo[data-ex="f"] .bc-f,#ecoVoo[data-ex="w"] .bc-f,#ecoVoo[data-ex="s"] .bc-s{display:inline}#ecoVoo .boch{opacity:0}#ecoVoo[data-ex="f"] .boch,#ecoVoo[data-ex="w"] .boch{opacity:.55}
 #ecoVoo .olho,#ecoVoo .boca{transform-box:fill-box;transform-origin:center}#ecoVoo .olho{animation:pisca 4.5s infinite}#ecoVoo.fala .boca{animation:fala .2s ease-in-out infinite alternate}#ecoVoo.toca svg{animation:salta .5s cubic-bezier(.3,1.6,.5,1)}
 #botVozSel{max-width:150px;font:inherit;font-size:12px;padding:5px 6px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg)}#botVozSel[hidden]{display:none}
-#botCur{position:fixed;left:-60px;top:-60px;z-index:65;width:30px;height:30px;pointer-events:none;opacity:0;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)) drop-shadow(0 0 8px rgba(95,240,255,.8));transition:opacity .3s}#botCur svg{width:100%;height:100%;transition:transform .15s}#botCur.prime svg{transform:scale(.82)}
+#botCur{position:fixed;left:-60px;top:-60px;margin:-3px 0 0 -3px;z-index:64;width:44px;height:44px;pointer-events:none;opacity:0;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)) drop-shadow(0 0 6px rgba(95,240,255,.6));transition:opacity .3s}
+#botCur svg{width:100%;height:100%;transform-origin:3px 3px;transition:transform .25s}#botCur[data-lado="e"] svg{transform:scaleX(-1)}#botCur[data-lado="c"] svg{transform:scaleY(-1)}#botCur[data-lado="ec"] svg{transform:scale(-1,-1)}
+#botCur.prime svg{transform:scale(.8)}#botCur.prime[data-lado="e"] svg{transform:scale(-.8,.8)}#botCur.prime[data-lado="c"] svg{transform:scale(.8,-.8)}#botCur.prime[data-lado="ec"] svg{transform:scale(-.8,-.8)}
+#botAv[data-ex="r"] .ex-r,#botAv[data-ex="c"] .ex-c,#botAv[data-ex="t"] .ex-t,#botAv[data-ex="o"] .ex-o,#ecoVoo[data-ex="r"] .ex-r,#ecoVoo[data-ex="c"] .ex-c,#ecoVoo[data-ex="t"] .ex-t,#ecoVoo[data-ex="o"] .ex-o{display:inline}
+#botAv[data-ex="r"] .bc-r,#botAv[data-ex="c"] .bc-s,#botAv[data-ex="t"] .bc-t,#botAv[data-ex="o"] .bc-f,#ecoVoo[data-ex="r"] .bc-r,#ecoVoo[data-ex="c"] .bc-s,#ecoVoo[data-ex="t"] .bc-t,#ecoVoo[data-ex="o"] .bc-f{display:inline}
+#botAv[data-ex="r"] .boch,#botAv[data-ex="o"] .boch,#ecoVoo[data-ex="r"] .boch,#ecoVoo[data-ex="o"] .boch{opacity:.55}#botAv[data-ex="c"] svg{transform:rotate(7deg)}#botAv[data-ex="t"] svg{transform:translateY(3px)}
+.mao{transform-box:fill-box;transform-origin:50% 90%}#botAv[data-ex="f"] .maoD,#botAv[data-ex="r"] .maoD,#ecoVoo[data-ex="f"] .maoD,#ecoVoo[data-ex="r"] .maoD{animation:acena .45s ease-in-out 4 alternate}#botAv[data-ex="c"] .maoE,#ecoVoo[data-ex="c"] .maoE{transform:translate(4px,-10px)}@keyframes acena{from{transform:rotate(-28deg)}to{transform:rotate(28deg)}}
+#botMenu{position:absolute;right:10px;bottom:56px;z-index:2;padding:10px;border-radius:12px;display:flex;flex-direction:column;gap:8px;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.35)}#botMenu[hidden]{display:none}#botMenu label{font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:4px}
+#botVozSel2{font:inherit;font-size:13px;padding:6px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg)}#botMenu small{color:var(--mut);font-size:11.5px;line-height:1.35}
 .onda{position:fixed;z-index:64;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:3px solid #5ff0ff;pointer-events:none;animation:onda .65s ease-out forwards}@keyframes onda{from{transform:scale(.2);opacity:1}to{transform:scale(1.8);opacity:0}}
 .botFx{position:fixed;z-index:61;pointer-events:none}.confete{position:fixed;z-index:62;width:8px;height:12px;border-radius:2px;pointer-events:none}
 #botVid{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center}#botVid[hidden]{display:none}#botVid iframe{width:min(860px,94vw);aspect-ratio:16/9;border:0;border-radius:12px}
@@ -735,26 +743,35 @@ const BOT_SVG=`<svg viewBox="0 0 120 120" aria-hidden="true"><defs><radialGradie
  <rect class="bc bc-n boca" x="52" y="69" width="16" height="4" rx="2" stroke="none"/>
  <path class="bc bc-f boca" d="M50 68q10 9 20 0" fill="none" stroke-width="3.4"/>
  <ellipse class="bc bc-s boca" cx="60" cy="72" rx="4.2" ry="5" stroke="none"/>
-</g><text x="60" y="94" text-anchor="middle" font-size="9" font-weight="700" fill="#2b6c8f" font-family="system-ui,sans-serif">CO₂</text></svg>`;
+ <g class="ex ex-r" fill="none" stroke-width="3.6"><path d="M41.5 58q6-9 12 0"/><path d="M66.5 58q6-9 12 0"/></g>
+ <g class="ex ex-c" stroke="none"><circle cx="47.5" cy="55" r="6.5"/><rect class="olho" x="68" y="53" width="10" height="7" rx="3.5"/><path d="M66 46l13-4" fill="none" stroke="#5ff0ff" stroke-width="2.6"/></g>
+ <g class="ex ex-t"><rect class="olho" x="43" y="52" width="10" height="12" rx="5" stroke="none"/><rect class="olho" x="67" y="52" width="10" height="12" rx="5" stroke="none"/><path d="M41 49l11-4M79 49l-11-4" fill="none" stroke-width="2.6"/></g>
+ <g class="ex ex-o" stroke="none"><path d="M42 55h11v3a5.5 5.5 0 0 1-11 0z"/><path d="M67 55h11v3a5.5 5.5 0 0 1-11 0z"/></g>
+ <path class="bc bc-r boca" d="M50 67h20q0 10-10 10q-10 0-10-10z" stroke="none"/>
+ <path class="bc bc-t boca" d="M51 75q9-7 18 0" fill="none" stroke-width="3.2"/>
+</g><text x="60" y="94" text-anchor="middle" font-size="9" font-weight="700" fill="#2b6c8f" font-family="system-ui,sans-serif">CO₂</text>
+<g fill="url(#ecoC)" stroke="#2b6c8f" stroke-width="2"><ellipse class="mao maoE" cx="10" cy="83" rx="7" ry="8.5"/><ellipse class="mao maoD" cx="110" cy="83" rx="7" ry="8.5"/></g></svg>`;
 const ICO={ant:'<svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>',seg:'<svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>',pausa:'<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>',
  play:'<svg viewBox="0 0 24 24"><path d="M7 5v14l12-7z"/></svg>',som:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
  mudo:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>',x:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>',
- cur:'<svg viewBox="0 0 30 30"><path d="M2 2l9 25 3.6-10.4L25 13z" fill="#fff" stroke="#0b1d36" stroke-width="1.6" stroke-linejoin="round"/></svg>'};
+ // a mão da Eco (braço + mão com o indicador esticado); a ponta do dedo fica no ponto (3,3) e o braço vai na direção da Eco
+ cur:'<svg viewBox="0 0 44 44"><g stroke-linecap="round" fill="none"><path d="M43 43Q31 34 17 17" stroke="#2b6c8f" stroke-width="8"/><path d="M43 43Q31 34 17 17" stroke="#cfeaf6" stroke-width="5"/><circle cx="14" cy="14" r="7.5" fill="#eef8fd" stroke="#2b6c8f" stroke-width="2"/><path d="M11 11L4 4" stroke="#2b6c8f" stroke-width="6.4"/><path d="M11 11L4 4" stroke="#f4fbff" stroke-width="3.8"/><path d="M14.5 20.5q4 .5 6-2.5M20.5 15q2-3 0-6" stroke="#2b6c8f" stroke-width="1.6"/></g></svg>',
+ cfg:'<svg viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7zm8.6 4.9l1.9 1.5-2 3.4-2.3-.8a7.8 7.8 0 01-2 1.2l-.4 2.4h-4l-.4-2.4a7.8 7.8 0 01-2-1.2l-2.3.8-2-3.4 1.9-1.5a7.7 7.7 0 010-2.8L1.5 9.1l2-3.4 2.3.8a7.8 7.8 0 012-1.2l.4-2.4h4l.4 2.4a7.8 7.8 0 012 1.2l2.3-.8 2 3.4-1.9 1.5a7.7 7.7 0 010 2.8z"/></svg>'};
 const BOT={on:false,k:0,pts:0,run:0,pausado:false,voz:true,nomeVoz:'',el:null,seg:0,ti:0,modo0:false};
 try{const v=localStorage.getItem('ecocell-voz2');if(v!==null)BOT.voz=v==='1';BOT.nomeVoz=localStorage.getItem('ecocell-voz-nome')||''}catch(e){}
-document.body.insertAdjacentHTML('beforeend',`<div id="spot"></div><div id="botCur">${ICO.cur}</div><div id="ecoVoo" data-ex="n" aria-hidden="true">${BOT_SVG}</div><div id="bot" hidden role="dialog" aria-live="polite"><div id="botAv" data-ex="n" title="Eco">${BOT_SVG}</div><div id="botBal" class="gl"><div id="botH"><b>Eco</b><span id="botSub"></span><span id="botDots"></span></div><div id="botT"></div><div id="botTx"></div><div id="botAviso" hidden></div><div id="botQ"></div><div id="botN"><button class="b" id="botAnt">${ICO.ant}</button><button class="b pri" id="botPau">${ICO.pausa}</button><button class="b" id="botSeg">${ICO.seg}</button><span class="sp"></span><button class="b" id="botVel"></button><button class="b" id="botVoz">${ICO.som}</button><button class="b" id="botX">${ICO.x}</button></div></div></div><div id="botVid" hidden><iframe title="Vídeo" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`);
+document.body.insertAdjacentHTML('beforeend',`<div id="spot"></div><div id="botCur">${ICO.cur}</div><div id="ecoVoo" data-ex="n" aria-hidden="true">${BOT_SVG}</div><div id="bot" hidden role="dialog" aria-live="polite"><div id="botAv" data-ex="n" title="Eco">${BOT_SVG}</div><div id="botBal" class="gl"><div id="botH"><b>Eco</b><span id="botSub"></span><span id="botDots"></span></div><div id="botT"></div><div id="botTx"></div><div id="botAviso" hidden></div><div id="botMenu" class="gl" hidden><label><span id="botMenuL"></span><select id="botVozSel2"></select></label><button class="b" id="botTesta"></button><small id="botMenuNota"></small></div><div id="botQ"></div><div id="botN"><button class="b" id="botAnt">${ICO.ant}</button><button class="b pri" id="botPau">${ICO.pausa}</button><button class="b" id="botSeg">${ICO.seg}</button><span class="sp"></span><button class="b" id="botVel"></button><button class="b" id="botCfg"></button><button class="b" id="botVoz">${ICO.som}</button><button class="b" id="botX">${ICO.x}</button></div></div></div><div id="botVid" hidden><iframe title="Vídeo" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`);
 const L2=(pt,en)=>LANG==='en'?en:pt,idxPais=en=>D.countries.findIndex(c=>c.en===en),fechaJanelas=()=>document.querySelectorAll('.win').forEach(x=>x.classList.remove('on')),reduzir=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 /* --- motor da demonstração: cada passo corre como uma tarefa assíncrona; mudar de passo cancela a anterior --- */
 class Cancela{}
 const vivo=id=>{if(id!==BOT.run||!BOT.on)throw new Cancela()};
 // Velocidade da Eco (botão «1×» no balão): VEL multiplica a velocidade da voz e divide as pausas e os movimentos. RITMO_BASE é o ritmo a 1×.
-const RITMO_BASE=1.2,VELS=[.75,1,1.25,1.5];let VEL=1;try{const v=+localStorage.getItem('ecocell-vel');if(VELS.includes(v))VEL=v}catch(e){}let RITMO=RITMO_BASE/VEL;
+const RITMO_BASE=1,VELS=[.75,1,1.25,1.5];let VEL=1;try{const v=+localStorage.getItem('ecocell-vel');if(VELS.includes(v))VEL=v}catch(e){}let RITMO=RITMO_BASE/VEL;
 async function espera(ms,id,semRitmo){let t=0;if(!semRitmo)ms*=RITMO;while(t<ms){vivo(id);await new Promise(r=>setTimeout(r,50));if(!BOT.pausado)t+=50}vivo(id)}
 const centro=el=>{const r=el.getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2]};
 function foca(sel){BOT.el=sel?(typeof sel==='string'?document.querySelector(sel):sel):null;botSegue()}
 function cara(ex,salta){for(const a of [$('#botAv'),$('#ecoVoo')]){if(!a)continue;a.dataset.ex=ex||'n';if(salta&&!reduzir()){a.classList.remove('salta');void a.offsetWidth;a.classList.add('salta')}}}
 /* a Eco sai do balão e voa pelo ecrã ao lado do cursor: é ela que aponta e carrega. Volta ao balão quando não há nada para mostrar. */
-function ecoPara(x,y,ms){const e=$('#ecoVoo');if(!e)return;const w=innerWidth<700?52:66;let ex=x+16,ey=y+14;if(ex+w>innerWidth-8)ex=x-16-w;if(ey+w>innerHeight-8)ey=y-14-w;ex=Math.max(8,ex);ey=Math.max(8,ey);
+function ecoPara(x,y,ms){const e=$('#ecoVoo');if(!e)return;const w=innerWidth<700?52:66;let ex=x+16,ey=y+14;if(ex+w>innerWidth-8)ex=x-16-w;if(ey+w>innerHeight-8)ey=y-14-w;ex=Math.max(8,ex);ey=Math.max(8,ey);$('#botCur').dataset.lado=(ex<x?'e':'')+(ey<y?'c':'');   /* a mão estica-se do lado onde a Eco está */
  if(!e.classList.contains('on')){const r=$('#botAv').getBoundingClientRect();e.style.transition='none';Object.assign(e.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.width+'px'});void e.offsetWidth;e.classList.add('on');$('#botAv').style.visibility='hidden'}
  e.style.transition=ms?`left ${ms}ms cubic-bezier(.4,0,.2,1),top ${ms}ms cubic-bezier(.4,0,.2,1),width ${ms}ms,height ${ms}ms,opacity .3s`:'opacity .3s';Object.assign(e.style,{left:ex+'px',top:ey+'px',width:w+'px',height:w+'px'})}
 async function ecoVolta(){const e=$('#ecoVoo');$('#botCur').style.opacity=0;if(!e||!e.classList.contains('on'))return;const r=$('#botAv').getBoundingClientRect(),ms=Math.round(900*RITMO);
@@ -779,124 +796,156 @@ const VOZ_F={pt:/raquel|fernanda|francisca|joana|catarina|luciana|maria|helena|h
  en:/aria|jenny|sonia|libby|maisie|samantha|serena|karen|moira|tessa|zira|hazel|susan|emma|ava|allison|michelle|female/i},VOZ_M=/duarte|ant[oó]nio|daniel|thomas|guy|ryan|david|mark|george|james|male\b|masculin|valerio|julio|donato|fabio|humberto|nicolau|cristiano|eric|brian|andrew|christopher|roger|steffan/i;
 const vozes=()=>('speechSynthesis' in window?speechSynthesis.getVoices():[]).filter(v=>v.lang.toLowerCase().startsWith(LANG==='en'?'en':'pt'));
 function notaVoz(v){const lg=LANG==='en'?'en':'pt';let s=0;if(lg==='pt'&&/pt[-_]pt/i.test(v.lang))s+=3;if(lg==='en'&&/en[-_](gb|us)/i.test(v.lang))s+=1;if(/natural|neural|online|premium|enhanced|wavenet/i.test(v.name))s+=8;if(/google/i.test(v.name))s+=9;if(VOZ_F[lg].test(v.name))s+=5;if(VOZ_M.test(v.name))s-=12;return s}
-function escolheVoz(){const vs=vozes();return vs.length?vs.slice().sort((a,b)=>notaVoz(b)-notaVoz(a))[0]:null}
+function escolheVoz(){const vs=vozes();if(!vs.length)return null;return vs.find(v=>v.name===BOT.nomeVoz)||vs.slice().sort((a,b)=>notaVoz(b)-notaVoz(a))[0]}   /* a voz escolhida no menu ⚙ tem prioridade */
 function avisoVoz(m){const a=$('#botAviso');if(!a)return;a.textContent=m;a.hidden=!m}
-/* --- uma frase: aparece escrita ao ritmo da voz e só termina quando (1) a voz acabou E (2) passou o tempo mínimo de leitura.
-   O tempo mínimo protege contra browsers em que a voz «acaba» logo (erro do Chrome ao cancelar e falar seguido) ou não se ouve. --- */
+/* --- uma frase: o texto só começa a aparecer QUANDO a voz começa a falar (evento onstart) e avança palavra a palavra com ela.
+   Se a voz estiver desligada, não arrancar em 1,5 s ou «acabar» cedo demais (erro do Chrome), o texto aparece ao ritmo de leitura. --- */
 function diz(t,id){return new Promise(res=>{const box=$('#botTx'),bot=$('#bot');box.querySelectorAll('.fr').forEach(x=>x.classList.add('lida'));
  const sp=document.createElement('span');sp.className='fr';box.appendChild(sp);box.appendChild(document.createTextNode(' '));
- const temVoz=BOT.voz&&'speechSynthesis' in window,v=temVoz?escolheVoz():null,min=Math.max(3400,t.length*88)*RITMO/1.5;let fim=false,bnd=false,i=0;bot.classList.add('fala','escreve');
+ const temVoz=BOT.voz&&'speechSynthesis' in window,v=temVoz?escolheVoz():null,est=t.length*62/VEL;let fim=false,bnd=false,i=0,comecou=false,t0=0;bot.classList.add('fala');
  const acaba=()=>{if(fim)return;fim=true;clearInterval(BOT.ti);sp.textContent=t;box.scrollTop=box.scrollHeight;bot.classList.remove('fala','escreve');res()};
- const passo=t.length/(Math.min(min*.85,t.length*70)/40);clearInterval(BOT.ti);   // escrita temporizada (se o browser não indicar as palavras ditas)
- BOT.ti=setInterval(()=>{if(BOT.pausado||bnd)return;i=Math.min(t.length,i+passo);sp.textContent=t.slice(0,Math.round(i));box.scrollTop=box.scrollHeight;if(i>=t.length)bot.classList.remove('escreve')},40);
- if(reduzir())sp.textContent=t;
- const pMin=espera(min,id,1),pVoz=new Promise(ok=>{if(!temVoz)return ok();
-  // sem voz instalada para a língua: deixa o browser escolher pela língua (melhor do que ficar em silêncio)
-  const u=new SpeechSynthesisUtterance(t);if(v)u.voice=v;u.lang=v?v.lang:(LANG==='en'?'en-GB':'pt-PT');u.rate=Math.max(.6,Math.min(1.7,(LANG==='en'?.9:.92)*VEL));u.pitch=1.06;BOT.u=u;   // guardar a referência: o Chrome perde os eventos se a frase for recolhida da memória
-  u.onboundary=e=>{if(e.name&&e.name!=='word')return;bnd=true;const w=(t.slice(e.charIndex).match(/^\S+/)||[''])[0];sp.textContent=t.slice(0,e.charIndex+(e.charLength||w.length));box.scrollTop=box.scrollHeight};
-  u.onstart=()=>{BOT.ouviu=true;avisoVoz('')};
-  u.onend=()=>{bot.classList.remove('fala');ok()};
-  u.onerror=e=>{bot.classList.remove('fala');if(e.error&&!/interrupted|canceled/.test(e.error))avisoVoz(L2('A voz falhou neste browser','The voice failed in this browser')+` (${e.error}). `+L2('Experimenta o Microsoft Edge ou o Google Chrome.','Try Microsoft Edge or Google Chrome.'));ok()};
-  setTimeout(()=>{if(!BOT.ouviu&&id===BOT.run&&BOT.voz)avisoVoz(vozes().length?L2('Não estou a conseguir falar: confirma o som do computador e do browser.','I cannot speak: check the computer and browser sound.'):L2('Este browser não tem vozes em português instaladas. O Microsoft Edge tem vozes naturais gratuitas.','This browser has no English voices installed. Microsoft Edge has free natural voices.'))},5000);
-  setTimeout(ok,min*4+8000);
-  // limpa a fila e tira a voz de «pausa» (o Chrome fica mudo para sempre se a fila ficar pausada), depois fala
-  speechSynthesis.cancel();speechSynthesis.resume();setTimeout(()=>{if(!fim&&id===BOT.run){speechSynthesis.resume();speechSynthesis.speak(u)}else ok()},150)});
- Promise.all([pMin,pVoz]).then(acaba,acaba)})}
+ const escreve=()=>{if(comecou)return;comecou=true;t0=performance.now();bot.classList.add('escreve');if(reduzir()){sp.textContent=t;return}const passo=t.length/(est/40);clearInterval(BOT.ti);
+  BOT.ti=setInterval(()=>{if(BOT.pausado||bnd)return;i=Math.min(t.length,i+passo);sp.textContent=t.slice(0,Math.round(i));box.scrollTop=box.scrollHeight;if(i>=t.length)bot.classList.remove('escreve')},40)};
+ const leitura=()=>espera(Math.max(2200,est)*RITMO+400,id,1);   // tempo de leitura quando não há voz
+ if(!temVoz){escreve();leitura().then(acaba,acaba);return}
+ // sem voz instalada para a língua: deixa o browser escolher pela língua (melhor do que ficar em silêncio)
+ const u=new SpeechSynthesisUtterance(t);if(v)u.voice=v;u.lang=v?v.lang:(LANG==='en'?'en-GB':'pt-PT');u.rate=Math.max(.6,Math.min(2,(LANG==='en'?1:1.05)*VEL));u.pitch=1.05;BOT.u=u;   // guardar a referência: o Chrome perde os eventos se a frase for recolhida da memória
+ u.onstart=()=>{BOT.ouviu=true;avisoVoz('');escreve()};
+ u.onboundary=e=>{if(e.name&&e.name!=='word')return;escreve();bnd=true;const w=(t.slice(e.charIndex).match(/^\S+/)||[''])[0];sp.textContent=t.slice(0,e.charIndex+(e.charLength||w.length));box.scrollTop=box.scrollHeight};
+ u.onend=()=>{bot.classList.remove('fala');if(comecou&&performance.now()-t0>est*.35)acaba();else{escreve();leitura().then(acaba,acaba)}};
+ u.onerror=e=>{bot.classList.remove('fala');if(e.error&&!/interrupted|canceled/.test(e.error))avisoVoz(L2('A voz falhou neste browser','The voice failed in this browser')+` (${e.error}). `+L2('Experimenta o Microsoft Edge ou o Google Chrome.','Try Microsoft Edge or Google Chrome.'));escreve();leitura().then(acaba,acaba)};
+ setTimeout(()=>{if(!fim)escreve()},1500);   // a voz não arrancou: o texto aparece na mesma
+ setTimeout(()=>{if(!BOT.ouviu&&id===BOT.run&&BOT.voz)avisoVoz(vozes().length?L2('Não estou a conseguir falar: confirma o som do computador e do browser.','I cannot speak: check the computer and browser sound.'):L2('Este browser não tem vozes em português instaladas. O Microsoft Edge tem vozes naturais gratuitas.','This browser has no English voices installed. Microsoft Edge has free natural voices.'))},5000);
+ setTimeout(()=>{if(!fim)leitura().then(acaba,acaba)},est*3+6000);
+ // limpa a fila e tira a voz de «pausa» (o Chrome fica mudo para sempre se a fila ficar pausada), depois fala logo
+ const fala=()=>{if(!fim&&id===BOT.run){speechSynthesis.resume();speechSynthesis.speak(u)}};
+ if(speechSynthesis.speaking||speechSynthesis.pending){speechSynthesis.cancel();speechSynthesis.resume();setTimeout(fala,120)}else{speechSynthesis.resume();fala()}})}
 const n1=v=>Math.abs(v).toFixed(1).replace('.',LANG==='en'?'.':',');
 /* --- passos: cada frase {pt,en} pode ter: alvo (o que fica iluminado), ex (expressão), antes (ação antes de falar), a (ação depois de falar), p (pausa no fim) --- */
-const abrePainel=w=>async id=>{await clicaEm(`[data-w="${w}"]`,id,()=>openWin(w,true));foca('#w-'+w);await espera(700,id)};
+const abrePainel=w=>async id=>{await clicaEm(`[data-w="${w}"]`,id,()=>openWin(w,true));foca('#w-'+w);await espera(600,id)};
 const desce=(w,f)=>async id=>{await rola(w,f||(x=>{x.scrollTo({top:Math.min(x.scrollHeight*.3,260),behavior:reduzir()?'auto':'smooth'});return null}),id)};
-const painelP=(w,ex,nome,resumo)=>({ex,t:nome,seg:[{alvo:null,pt:`Agora o painel ${nome.pt}.`,en:`Now the ${nome.en} panel.`,a:abrePainel(w)},   // 1.º abre o painel, 2.º resume o que faz
- {alvo:'#w-'+w,get pt(){return resumo.pt},get en(){return resumo.en},a:desce('#w-'+w),p:1500}]});
+// procura numa janela o título (h2, negrito, cabeçalho de tabela) cujo texto corresponde à expressão, para lá descer
+const secao=(w,re)=>()=>[...document.querySelectorAll(`${w} h2,${w} b,${w} strong,${w} th`)].find(x=>re.test(x.textContent));
+const aponta=sel=>async id=>{const el=typeof sel==='function'?sel():document.querySelector(sel);if(el&&el.getClientRects().length){const r=el.getBoundingClientRect();await cursorPara(Math.min(r.right-8,r.left+40),r.top+r.height/2,id)}};
+// um painel: 1.º a Eco abre-o, 2.º resume para que serve, depois (opcional) mostra as partes mais importantes
+const painelP=(w,ex,nome,resumo,mais=[])=>({ex,t:nome,seg:[{alvo:null,pt:`Agora o painel ${nome.pt}.`,en:`Now the ${nome.en} panel.`,a:abrePainel(w)},
+ {alvo:'#w-'+w,ex:resumo.ex||ex,get pt(){return resumo.pt},get en(){return resumo.en},a:desce('#w-'+w),p:1100},...mais.map(m=>({alvo:'#w-'+w,...m}))]});
 const corDe=l=>{const cs=C.filter(c=>c.ci===curC&&c.lv===l);return cs[Math.floor(cs.length/2)]};
 const vaiCor=l=>async id=>{const c=corDe(l),p=c&&mapaXY(c.lon,c.lat);if(p)await cursorPara(p[0],p[1],id)};
 const BOT_PASSOS=[
- {ex:'f',salta:1,t:{pt:'Olá! Eu sou a Eco',en:'Hi! I am Eco'},seg:[
-  {pt:'Sou a assistente da EcoCell.',en:'I am the EcoCell assistant.'},
-  {pt:'Vou mostrar-te, com calma, tudo o que esta aplicação faz. Não precisas de mexer em nada.',en:'I will calmly show you everything this app does. You do not need to touch anything.'},
-  {ex:'w',pt:'Se quiseres, podes pausar, avançar ou recuar com os botões aqui em baixo.',en:'If you like, you can pause, skip or go back with the buttons below.'}]},
+ {ex:'r',salta:1,t:{pt:'Olá! Eu sou a Eco',en:'Hi! I am Eco'},seg:[
+  {ex:'r',pt:'Olá! Sou a Eco, a assistente da EcoCell.',en:'Hello! I am Eco, the EcoCell assistant.'},
+  {ex:'o',pt:'Vou mostrar-te tudo o que esta aplicação faz. Não precisas de mexer em nada: eu aponto e carrego por ti.',en:'I will show you everything this app does. You do not need to touch anything: I point and click for you.'},
+  {ex:'w',pt:'Aqui em baixo podes pausar, avançar, recuar, mudar a minha velocidade e a minha voz.',en:'Down here you can pause, skip, go back, and change my speed and my voice.'}]},
  {ex:'n',t:{pt:'O mapa do mundo',en:'The world map'},seg:[
-  {pt:'Este é o mapa do mundo, com imagens de satélite da NASA.',en:'This is the world map, with NASA satellite imagery.',antes:async id=>{await cursorPara(innerWidth*.55,innerHeight*.45,id)}},
-  {pt:'Para o mover, basta arrastá-lo, assim.',en:'To move it, just drag it, like this.',a:async id=>{await arrasta(-160,40,1800,id);await espera(400,id);await arrasta(160,-40,1600,id)}},
-  {pt:'Para ver mais perto, usa a roda do rato, ou dois dedos no telemóvel.',en:'To get closer, use the mouse wheel, or two fingers on a phone.',
-   a:async id=>{const p=mapaXY(20,5);await cursorPara(p[0],p[1],id);await toque(p[0],p[1],id);svg.transition().duration(1100).call(zoom.scaleBy,2,p);await espera(2200,id);svg.transition().duration(1100).call(zoom.transform,d3.zoomIdentity);await espera(1300,id)}}]},
+  {ex:'o',pt:'Este é o mapa do mundo, com imagens de satélite da NASA.',en:'This is the world map, with NASA satellite imagery.',antes:async id=>{await cursorPara(innerWidth*.55,innerHeight*.45,id)}},
+  {ex:'f',pt:'Para o mover, basta arrastá-lo, assim.',en:'To move it, just drag it, like this.',a:async id=>{await arrasta(-160,40,1500,id);await espera(300,id);await arrasta(160,-40,1300,id)}},
+  {ex:'c',pt:'Para ver mais perto, usa a roda do rato, ou dois dedos no telemóvel.',en:'To get closer, use the mouse wheel, or two fingers on a phone.',
+   a:async id=>{const p=mapaXY(20,5);await cursorPara(p[0],p[1],id);await toque(p[0],p[1],id);svg.transition().duration(1000).call(zoom.scaleBy,2,p);await espera(1800,id);svg.transition().duration(1000).call(zoom.transform,d3.zoomIdentity);await espera(1100,id)}},
+  {ex:'n',pt:'Se clicares no mar, vês as coordenadas desse ponto.',en:'If you click the ocean, you see the coordinates of that point.',
+   a:async id=>{const p=mapaXY(-35,10);if(p){await cursorPara(p[0],p[1],id);await toque(p[0],p[1],id);svg.node().dispatchEvent(new MouseEvent('click',{clientX:p[0],clientY:p[1],bubbles:true}));openWin('i',true);foca('#w-i');await espera(2200,id);fechaJanelas();foca(null)}}}]},
  {ex:'w',t:{pt:'Plano ou globo',en:'Flat or globe'},seg:[
-  {alvo:'#vis',pt:'Aqui em cima escolhes a vista: o mapa plano ou o globo em três dimensões.',en:'Up here you choose the view: the flat map or the three dimensional globe.'},
-  {alvo:'#vis',pt:'Vou carregar em Globo 3D.',en:'I will press 3D globe.',a:async id=>{await clicaEm('#vis [data-v="3d"]',id);foca(null);await espera(1200,id)}}]},
+  {alvo:'#vis',ex:'o',pt:'Aqui em cima escolhes a vista: o mapa plano ou o globo em três dimensões.',en:'Up here you choose the view: the flat map or the three dimensional globe.',antes:aponta('#vis')},
+  {alvo:'#vis',ex:'r',pt:'Vou carregar em Globo 3D.',en:'I will press 3D globe.',a:async id=>{await clicaEm('#vis [data-v="3d"]',id);foca(null);await espera(1000,id)}}]},
  {ex:'f',salta:1,t:{pt:'A Terra em 3D',en:'The Earth in 3D'},seg:[
-  {pt:'No globo, arrastas para o rodar em qualquer direção.',en:'On the globe, you drag to spin it in any direction.',a:async id=>{await cursorPara(glCx()+40,glCy(),id);await arrasta(-200,0,2200,id);await espera(400,id);await arrasta(140,-30,1700,id)}},
-  {alvo:'#zm',pt:'Os botões mais e menos, à direita, aproximam e afastam.',en:'The plus and minus buttons, on the right, zoom in and out.',a:async id=>{await clicaEm('#zIn',id);await espera(1800,id);await clicaEm('#zOut',id);await espera(1200,id);foca(null)}}]},
+  {ex:'r',pt:'No globo, arrastas para o rodar em qualquer direção.',en:'On the globe, you drag to spin it in any direction.',a:async id=>{await cursorPara(glCx()+40,glCy(),id);await arrasta(-200,0,1900,id);await espera(300,id);await arrasta(140,-30,1500,id)}},
+  {alvo:'#zm',ex:'o',pt:'Os botões mais e menos, à direita, aproximam e afastam.',en:'The plus and minus buttons, on the right, zoom in and out.',a:async id=>{await clicaEm('#zIn',id);await espera(1500,id);await clicaEm('#zOut',id);await espera(1000,id);foca(null)}},
+  {ex:'c',pt:'E se clicares no mar, o globo aproxima nesse ponto.',en:'And if you click the ocean, the globe zooms in on that point.',
+   a:async id=>{GL.tl=-25;GL.tla=5;GL.tk=1;await assenta(id);const p=mapaXY(-30,0);if(p){await cursorPara(p[0],p[1],id);await toque(p[0],p[1],id);glZoom(-30,0,1.8);await assenta(id);await espera(800,id);GL.tk=1;GL.tl=15;GL.tla=4;await assenta(id)}}}]},
  {ex:'s',t:{pt:'Escolher um continente',en:'Choosing a continent'},seg:[
-  {pt:'Para estudar uma região, clicas num continente. Vou abrir África.',en:'To study a region, you click a continent. I will open Africa.',
+  {ex:'o',pt:'Para estudar uma região, clicas num continente. Vou abrir África.',en:'To study a region, you click a continent. I will open Africa.',
    a:async id=>{GL.tl=15;GL.tla=4;GL.tk=1;await assenta(id);await clicaMapa(20,5,id,()=>cont(0));await assenta(id)}},
-  {pt:'O globo voa até lá, escurece o resto do mundo e mostra os nomes dos países.',en:'The globe flies there, darkens the rest of the world and shows the country names.',p:1200}]},
+  {ex:'s',pt:'O globo voa até lá, escurece o resto do mundo e mostra os nomes dos países.',en:'The globe flies there, darkens the rest of the world and shows the country names.',p:1000},
+  {alvo:'#toast',ex:'n',pt:'Este aviso, à direita, abre o resumo do continente: quantos países têm dados e como se distribui o metano.',en:'This notice, on the right, opens the continent summary: how many countries have data and how methane is distributed.',
+   antes:aponta('#toast'),a:async id=>{openWin('i',true);foca('#w-i');await espera(2200,id);fechaJanelas();foca(null)}}]},
  {ex:'n',t:{pt:'Escolher um país',en:'Choosing a country'},seg:[
-  {pt:'Agora clico em Angola.',en:'Now I click Angola.',a:async id=>{await clicaMapa(17.5,-12,id,()=>go(idxPais('Angola')));await assenta(id)}},
-  {pt:'Cada quadrado é uma célula de cerca de cento e dez quilómetros, com o metano medido pelo satélite europeu Sentinel-5P.',en:'Each square is a cell of about one hundred and ten kilometres, with the methane measured by the European Sentinel-5P satellite.',p:1200}]},
- {ex:'p',t:{pt:'O que dizem as cores',en:'What the colours say'},seg:[
-  {pt:'As cores comparam cada célula com as outras da mesma latitude.',en:'The colours compare each cell with the others at the same latitude.'},
-  {pt:'Verde quer dizer metano baixo.',en:'Green means low methane.',antes:vaiCor(0)},
-  {pt:'Amarelo é médio.',en:'Yellow is medium.',antes:vaiCor(1)},
-  {ex:'s',pt:'E vermelho é alto: há mais metano do que o normal para aquela latitude.',en:'And red is high: there is more methane than usual for that latitude.',antes:vaiCor(2),p:1200}]},
+  {ex:'o',pt:'Agora clico em Angola.',en:'Now I click Angola.',a:async id=>{await clicaMapa(17.5,-12,id,()=>go(idxPais('Angola')));await assenta(id)}},
+  {ex:'f',pt:'Cada quadrado é uma célula de cerca de cento e dez quilómetros, com o metano medido pelo satélite europeu Sentinel-5P.',en:'Each square is a cell of about one hundred and ten kilometres, with the methane measured by the European Sentinel-5P satellite.',p:1000}]},
+ {ex:'n',t:{pt:'O cartão do país',en:'The country card'},seg:[
+  {alvo:'#w-i',ex:'o',pt:'O cartão do país mostra quantas células há em cada nível e um gráfico com a distribuição do metano.',en:'The country card shows how many cells are at each level and a chart of how methane is distributed.',antes:async id=>{openWin('i',true);foca('#w-i');await rola('#w-i',0,id)}},
+  {alvo:'#w-i',ex:'c',pt:'Mais abaixo vem a tendência do metano no país, medida pela NASA, comparada com a média mundial.',en:'Further down comes the methane trend in the country, measured by NASA, compared with the world average.',antes:async id=>{await rola('#w-i',secao('#w-i',/Tendência NASA AIRS|NASA AIRS trend|Tendência do país|Country trend/),id)}},
+  {alvo:'#w-i',ex:'p',pt:'E a chuva anual do país, ano a ano, com a sua tendência.',en:'And the country annual rainfall, year by year, with its trend.',antes:async id=>{await rola('#w-i',secao('#w-i',/Chuva anual|Annual rain/),id)},a:async id=>{await espera(600,id);fechaJanelas();foca(null)}}]},
+ {ex:'c',t:{pt:'O que dizem as cores',en:'What the colours say'},seg:[
+  {ex:'p',pt:'As cores comparam cada célula com as outras da mesma latitude.',en:'The colours compare each cell with the others at the same latitude.'},
+  {ex:'r',pt:'Verde quer dizer metano baixo.',en:'Green means low methane.',antes:vaiCor(0)},
+  {ex:'o',pt:'Amarelo é médio.',en:'Yellow is medium.',antes:vaiCor(1)},
+  {ex:'s',pt:'E vermelho é alto: há mais metano do que o normal para aquela latitude.',en:'And red is high: there is more methane than usual for that latitude.',antes:vaiCor(2),p:1000}]},
  {ex:'n',t:{pt:'O cartão de detalhe',en:'The detail card'},seg:[
-  {pt:'Vou abrir a célula com mais prioridade em terra.',en:'I will open the highest priority cell on land.',
+  {ex:'o',pt:'Vou abrir a célula com mais prioridade em terra.',en:'I will open the highest priority cell on land.',
    a:async id=>{const cs=C.filter(c=>c.ci===curC&&!c.sea).sort((a,b)=>b.sc-a.sc),c=cs[0]||C.find(c=>c.ci===curC);if(c)await clicaMapa(c.lon,c.lat,id,()=>show(c));openWin('i',true);await rola('#w-i',0,id)}},
-  {alvo:'#w-i',pt:'Abre-se o cartão de detalhe: o metano médio, a diferença face à latitude, a tendência e uma pontuação de prioridade de zero a cem.',en:'The detail card opens: the average methane, the difference from its latitude, the trend and a priority score from zero to one hundred.',p:1200},
-  {alvo:'#w-i',ex:'p',pt:'Mais abaixo, a recomendação explica porque é que a zona merece atenção, que dados faltam e que medições fazer no terreno.',en:'Further down, the recommendation explains why the area deserves attention, what data is missing and which field measurements to make.',
-   antes:async id=>{await rola('#w-i',titulo('#w-i',/Recomenda|Recommend/),id)},p:1200},
-  {alvo:'#w-i',pt:'O Earth System Detective responde a perguntas simples: o que mudou, quando, onde e porquê.',en:'The Earth System Detective answers simple questions: what changed, when, where and why.',
-   antes:async id=>{await rola('#w-i',titulo('#w-i',/Detective/),id)},p:1200}]},
+  {alvo:'#w-i',ex:'n',pt:'O cartão mostra o metano médio, a diferença face à latitude, a tendência e uma pontuação de prioridade de zero a cem.',en:'The card shows the average methane, the difference from its latitude, the trend and a priority score from zero to one hundred.',p:1000},
+  {alvo:'#w-i',ex:'p',pt:'A recomendação explica porque é que a zona merece atenção, que dados faltam e que medições fazer no terreno.',en:'The recommendation explains why the area deserves attention, what data is missing and which field measurements to make.',
+   antes:async id=>{await rola('#w-i',titulo('#w-i',/Recomenda|Recommend/),id)},p:1000},
+  {alvo:'#w-i',ex:'c',pt:'O Earth System Detective responde a perguntas simples: o que mudou, quando, onde e porquê.',en:'The Earth System Detective answers simple questions: what changed, when, where and why.',
+   antes:async id=>{await rola('#w-i',titulo('#w-i',/Detective/),id)},p:1000},
+  {alvo:'#w-i',ex:'o',pt:'Também mostra a tendência da NASA nesta célula e a comparação com outro satélite.',en:'It also shows the NASA trend in this cell and the comparison with another satellite.',
+   antes:async id=>{await rola('#w-i',secao('#w-i',/desta célula|this cell/),id)},p:1000}]},
  {ex:'f',t:{pt:'Simular a EcoCell',en:'Simulating EcoCell'},seg:[
-  {alvo:'#w-i',pt:'No fim do cartão podes simular a EcoCell.',en:'At the end of the card you can simulate EcoCell.',antes:async id=>{await rola('#w-i',w=>w.querySelector('#sim'),id)}},
-  {alvo:'#w-i',pt:'Ao aumentar a captura, vês as emissões evitadas e a eletricidade produzida.',en:'As the capture goes up, you see the emissions avoided and the electricity produced.',
-   a:async id=>{const r=$('#s2');if(!r)return;const [x,y]=centro(r);await cursorPara(x-20,y,id);for(let v=+r.value;v<=95;v+=5){vivo(id);r.value=v;r.dispatchEvent(new Event('input'));$('#botCur').style.transition='left .2s';$('#botCur').style.left=x-20+(v-60)*0.8+'px';await espera(220,id)}await espera(1200,id)}},
-  {alvo:'#w-i',pt:'E este botão avalia a prioridade da zona.',en:'And this button assesses the priority of the area.',a:async id=>{await clicaEm('#openZ',id);foca('#w-p');await rola('#w-p',0,id)}},
-  {alvo:'#w-p',ex:'p',pt:'Mostra os critérios, os pesos e a incerteza da pontuação.',en:'It shows the criteria, the weights and the uncertainty of the score.',p:1400}]},
+  {alvo:'#w-i',ex:'r',pt:'No fim do cartão podes simular a EcoCell.',en:'At the end of the card you can simulate EcoCell.',antes:async id=>{await rola('#w-i',w=>w.querySelector('#sim'),id)}},
+  {alvo:'#w-i',ex:'f',pt:'Ao aumentar a captura, vês as emissões evitadas e a eletricidade produzida.',en:'As the capture goes up, you see the emissions avoided and the electricity produced.',
+   a:async id=>{const r=$('#s2');if(!r)return;const [x,y]=centro(r);await cursorPara(x-20,y,id);for(let v=+r.value;v<=95;v+=5){vivo(id);r.value=v;r.dispatchEvent(new Event('input'));ecoPara(x-20+(v-60)*0.8,y,180);$('#botCur').style.transition='left .18s';$('#botCur').style.left=x-20+(v-60)*0.8+'px';await espera(200,id)}await espera(900,id)}},
+  {alvo:'#w-i',ex:'o',pt:'E este botão avalia a prioridade da zona.',en:'And this button assesses the priority of the area.',a:async id=>{await clicaEm('#openZ',id);foca('#w-p');await rola('#w-p',0,id)}},
+  {alvo:'#w-p',ex:'p',pt:'Mostra os critérios, os pesos e a incerteza da pontuação.',en:'It shows the criteria, the weights and the uncertainty of the score.',p:1100}]},
  {ex:'w',t:{pt:'Voltar atrás',en:'Going back'},seg:[
-  {alvo:'#back',pt:'Para recuar, uso o botão Voltar: da célula para o país, do país para o continente e do continente para o mundo.',en:'To step back, I use the Back button: from the cell to the country, from the country to the continent and from the continent to the world.',
-   a:async id=>{fechaJanelas();for(let i=0;i<3&&lvl>0;i++){await clicaEm('#back',id);await espera(1600,id)}foca(null)}},
-  {pt:'No computador, a tecla Escape faz o mesmo.',en:'On a computer, the Escape key does the same.'}]},
+  {alvo:'#back',ex:'o',pt:'Para recuar, uso o botão Voltar: da célula para o país, do país para o continente e do continente para o mundo.',en:'To step back, I use the Back button: from the cell to the country, from the country to the continent and from the continent to the world.',
+   a:async id=>{fechaJanelas();for(let i=0;i<3&&lvl>0;i++){await clicaEm('#back',id);await espera(1300,id)}foca(null)}},
+  {ex:'w',pt:'No computador, a tecla Escape faz o mesmo.',en:'On a computer, the Escape key does the same.'}]},
  {ex:'n',t:{pt:'A barra de ferramentas',en:'The toolbar'},seg:[
-  {alvo:'.dk',pt:'À esquerda está a barra de ferramentas.',en:'On the left is the toolbar.',a:async id=>{for(const b of [...document.querySelectorAll('.dk .bb')].slice(0,7)){const [x,y]=centro(b);await cursorPara(x+6,y,id,500)}}},
-  {alvo:'.dk',pt:'Vou abrir os painéis um a um e dizer para que serve cada um.',en:'I will open the panels one by one and tell you what each one is for.'}]},
- painelP('n','n',{pt:'Níveis',en:'Levels'},{pt:'Serve para ver quantas células têm metano baixo, médio e alto, e que limites foram usados para as classificar.',en:'It shows how many cells have low, medium and high methane, and which thresholds were used to classify them.'}),
- painelP('e','p',{pt:'Onde aplicar a EcoCell',en:'Where to deploy EcoCell'},{pt:'É um ranking das zonas a investigar primeiro. A pontuação junta a anomalia de metano, a persistência, a qualidade dos dados e a proximidade a fontes conhecidas.',en:'It is a ranking of the areas to investigate first. The score combines the methane anomaly, persistence, data quality and proximity to known sources.'}),
- painelP('t','f',{pt:'Tendência da NASA',en:'NASA trend'},{get pt(){return`Mostra quanto o metano sobe por ano em cada continente e país, medido pelo satélite AIRS da NASA desde 2002. Em média, sobe cerca de ${n1(D.airs.G)} partes por bilião por ano.`},
-  get en(){return`It shows how much methane rises per year in each continent and country, measured by NASA's AIRS satellite since 2002. On average, it rises about ${n1(D.airs.G)} parts per billion per year.`}}),
- painelP('q','s',{pt:'Quando mudou',en:'When it changed'},{pt:'Mostra a evolução do metano no planeta ao longo do tempo. A subida acelerou, com um pico por volta de 2021.',en:'It shows how methane evolved across the planet over time. The rise sped up, peaking around 2021.'}),
+  {alvo:'.dk',ex:'o',pt:'À esquerda está a barra de ferramentas.',en:'On the left is the toolbar.',a:async id=>{for(const b of [...document.querySelectorAll('.dk .bb')].slice(0,7)){const [x,y]=centro(b);await cursorPara(x+6,y,id,450)}}},
+  {alvo:'#btnTour',ex:'r',pt:'Este botão abre esta visita guiada. Também me podes chamar carregando no logotipo.',en:'This button opens this guided tour. You can also call me by pressing the logo.',antes:aponta('#btnTour')},
+  {alvo:'#btnGlobe',ex:'n',pt:'Este muda entre o mapa e o globo, como os botões lá em cima.',en:'This one switches between the map and the globe, like the buttons up top.',antes:aponta('#btnGlobe')},
+  {alvo:'.dk',ex:'f',pt:'Agora vou abrir os painéis um a um e dizer para que serve cada um.',en:'Now I will open the panels one by one and tell you what each one is for.'}]},
+ painelP('n','n',{pt:'Níveis',en:'Levels'},{pt:'Mostra quantas células têm metano baixo, médio e alto, e que limites foram usados para as classificar.',en:'It shows how many cells have low, medium and high methane, and which thresholds were used to classify them.'},
+  [{ex:'o',pt:'Mais abaixo há a lista de países: carregando num país, o mapa vai até ele.',en:'Further down is the list of countries: press a country and the map goes to it.',antes:async id=>{await rola('#w-n',w=>w.querySelector('#tc'),id)}}]),
+ painelP('e','p',{pt:'Onde aplicar a EcoCell',en:'Where to deploy EcoCell'},{pt:'É um ranking das zonas a investigar primeiro, para captar metano.',en:'It is a ranking of the areas to investigate first, to capture methane.'},
+  [{ex:'c',pt:'A pontuação junta quatro critérios: anomalia de metano, persistência, qualidade dos dados e proximidade a fontes conhecidas. Podes mudar os pesos.',en:'The score combines four criteria: methane anomaly, persistence, data quality and proximity to known sources. You can change the weights.',antes:async id=>{await rola('#w-e',0,id)}},
+   {ex:'o',pt:'E mais abaixo está o ranking por país e por zona.',en:'And further down is the ranking by country and by area.',antes:async id=>{await rola('#w-e',w=>w.querySelector('#te'),id)}}]),
+ painelP('t','f',{pt:'Tendência da NASA',en:'NASA trend'},{get pt(){return`Mostra quanto o metano sobe por ano, medido pelo satélite AIRS da NASA desde 2002. Em média, sobe cerca de ${n1(D.airs.G)} partes por bilião por ano.`},
+  get en(){return`It shows how much methane rises per year, measured by NASA's AIRS satellite since 2002. On average, it rises about ${n1(D.airs.G)} parts per billion per year.`}},
+  [{ex:'p',pt:'Cada resultado tem um selo: confirmado, parcial ou não confirmado, conforme outro satélite concorda ou não.',en:'Each result has a seal: confirmed, partial or not confirmed, depending on whether another satellite agrees.',antes:async id=>{await rola('#w-t',0,id)}},
+   {ex:'o',pt:'A tabela compara continentes e países, com a margem de erro e se são diferentes da média mundial.',en:'The table compares continents and countries, with the margin of error and whether they differ from the world average.',antes:async id=>{await rola('#w-t',w=>w.querySelector('#tk')||w.querySelector('#tt'),id)}}]),
+ painelP('q','s',{pt:'Quando mudou',en:'When it changed'},{pt:'Mostra a evolução do metano no planeta ao longo do tempo. A subida acelerou, com um pico por volta de 2021.',en:'It shows how methane evolved across the planet over time. The rise sped up, peaking around 2021.'},
+  [{ex:'c',pt:'E compara com as medições da NOAA, feitas à superfície, ano a ano.',en:'And it compares with NOAA measurements, taken at the surface, year by year.',antes:async id=>{await rola('#w-q',secao('#w-q',/NOAA/),id)}}]),
  painelP('r','n',{pt:'Chuva da NASA',en:'NASA rainfall'},{get pt(){return`Mostra onde a chuva aumentou e onde diminuiu desde 2003, com o satélite GPM. ${D.gpm.h} células ficaram mais húmidas e ${D.gpm.s} mais secas.`},
-  get en(){return`It shows where rainfall increased and where it decreased since 2003, with the GPM satellite. ${D.gpm.h} cells became wetter and ${D.gpm.s} drier.`}}),
+  get en(){return`It shows where rainfall increased and where it decreased since 2003, with the GPM satellite. ${D.gpm.h} cells became wetter and ${D.gpm.s} drier.`}},
+  [{ex:'s',pt:'O gráfico «mesma época, sentidos opostos» mostra países a ficar mais húmidos e outros mais secos ao mesmo tempo.',en:'The «same period, opposite directions» chart shows countries getting wetter and others drier at the same time.',antes:async id=>{await rola('#w-r',titulo('#w-r',/opostos|opposite/),id)}}]),
  {ex:'s',t:{pt:'As camadas do mapa',en:'The map layers'},seg:[
-  {alvo:'#btnL',pt:'Este botão muda as cores do mapa.',en:'This button changes the colours of the map.',antes:async id=>{fechaJanelas();if(D.gpmT&&GL.on){await clicaEm('#vis [data-v="2d"]',id);await espera(800,id)}}},
-  {alvo:'#btnL',pt:'Primeiro, a tendência do metano por país.',en:'First, the methane trend by country.',antes:async id=>{await clicaEm('#btnL',id);fechaJanelas()},p:1600},
-  {alvo:'#btnL',pt:'Depois, a chuva: castanho é mais seco e verde-azulado é mais húmido.',en:'Then rainfall: brown is drier and blue-green is wetter.',antes:async id=>{await clicaEm('#btnL',id);fechaJanelas()},p:1600},
-  ...(D.gpmT?[{alvo:'#yr',pt:'E a chuva ano a ano, com um botão para ver os anos a passar.',en:'And rainfall year by year, with a button to watch the years go by.',antes:async id=>{await clicaEm('#btnL',id);fechaJanelas()},
-   a:async id=>{await clicaEm('#yPlay',id);await espera(4500,id);await clicaEm('#yPlay',id)}}]:[]),
-  {alvo:'#btnL',pt:'E de volta ao mapa natural.',en:'And back to the natural map.',antes:async id=>{await clicaEm('#btnL',id);if(layer!=='n')setLayer('n');fechaJanelas()}}]},
- painelP('g','f',{pt:'Gémeo digital',en:'Digital twin'},{pt:'Simula o funcionamento da EcoCell: mudas o caudal e a composição do gás e vês os resultados. São hipóteses de demonstração, ainda não são medições.',en:'It simulates how EcoCell works: you change the gas flow and composition and see the results. These are demonstration assumptions, not measurements yet.'}),
+  {alvo:'#btnL',ex:'o',pt:'Este botão muda as cores do mapa.',en:'This button changes the colours of the map.',antes:async id=>{fechaJanelas();if(D.gpmT&&GL.on){await clicaEm('#vis [data-v="2d"]',id);await espera(600,id)}await aponta('#btnL')(id)}},
+  {alvo:'#btnL',ex:'c',pt:'Primeiro, a tendência do metano por país.',en:'First, the methane trend by country.',antes:async id=>{await clicaEm('#btnL',id);fechaJanelas()},p:1300},
+  {alvo:'#btnL',ex:'s',pt:'Depois, a chuva: castanho é mais seco e verde-azulado é mais húmido.',en:'Then rainfall: brown is drier and blue-green is wetter.',antes:async id=>{await clicaEm('#btnL',id);fechaJanelas()},p:1300},
+  ...(D.gpmT?[{alvo:'#yr',ex:'r',pt:'E a chuva ano a ano, com um botão para ver os anos a passar.',en:'And rainfall year by year, with a button to watch the years go by.',antes:async id=>{await clicaEm('#btnL',id);fechaJanelas()},
+   a:async id=>{await clicaEm('#yPlay',id);await espera(4000,id);await clicaEm('#yPlay',id)}}]:[]),
+  {alvo:'#btnL',ex:'f',pt:'E de volta ao mapa natural.',en:'And back to the natural map.',antes:async id=>{await clicaEm('#btnL',id);if(layer!=='n')setLayer('n');fechaJanelas()}}]},
+ painelP('g','f',{pt:'Gémeo digital',en:'Digital twin'},{pt:'Simula o funcionamento da EcoCell: mudas o caudal e a composição do gás e vês os resultados.',en:'It simulates how EcoCell works: you change the gas flow and composition and see the results.'},
+  [{ex:'p',pt:'Compara três cenários: sem EcoCell, EcoCell conservador e EcoCell otimizado. São hipóteses de demonstração, ainda não são medições.',en:'It compares three scenarios: without EcoCell, conservative EcoCell and optimised EcoCell. These are demonstration assumptions, not measurements yet.',antes:desce('#w-g')}]),
  {ex:'n',t:{pt:'Comparar dois países',en:'Comparing two countries'},seg:[
-  {pt:'Agora, comparar dois países.',en:'Now, comparing two countries.',a:async id=>{fechaJanelas();await clicaEm('#btnCmp',id);foca('#w-c');await espera(700,id)}},
-  {alvo:'#w-c',pt:'Escreves dois países e vês os números lado a lado. Por exemplo, Angola e Brasil.',en:'You type two countries and see the numbers side by side. For example, Angola and Brazil.',
-   a:async id=>{try{cmpSet('A',idxPais('Angola'));await espera(1100,id);cmpSet('B',idxPais('Brazil'));document.activeElement&&document.activeElement.blur()}catch(e){if(e instanceof Cancela)throw e}await espera(1600,id)}}]},
- painelP('m','p',{pt:'Métodos e fontes',en:'Methods and sources'},{pt:'Explica os testes estatísticos, de onde vêm os dados e, com honestidade, o que o projeto não afirma.',en:'It explains the statistical tests, where the data comes from and, honestly, what the project does not claim.'}),
+  {ex:'o',pt:'Agora, comparar dois países.',en:'Now, comparing two countries.',a:async id=>{fechaJanelas();await clicaEm('#btnCmp',id);foca('#w-c');await espera(600,id)}},
+  {alvo:'#w-c',ex:'r',pt:'Escreves dois países e vês os números lado a lado. Por exemplo, Angola e Brasil.',en:'You type two countries and see the numbers side by side. For example, Angola and Brazil.',
+   a:async id=>{try{await aponta('#w-c .cmpi')(id);cmpSet('A',idxPais('Angola'));await espera(900,id);cmpSet('B',idxPais('Brazil'));document.activeElement&&document.activeElement.blur()}catch(e){if(e instanceof Cancela)throw e}await espera(1300,id)}}]},
+ painelP('m','p',{pt:'Métodos e fontes',en:'Methods and sources'},{pt:'Explica os testes estatísticos e de onde vêm os dados.',en:'It explains the statistical tests and where the data comes from.'},
+  [{ex:'t',pt:'Diz também, com honestidade, o que o projeto não afirma.',en:'It also says, honestly, what the project does not claim.',antes:async id=>{await rola('#w-m',titulo('#w-m',/não afirmamos|do not claim/),id)}},
+   {ex:'o',pt:'E no fim explica como reproduzir todos os números.',en:'And at the end it explains how to reproduce all the numbers.',antes:async id=>{await rola('#w-m',titulo('#w-m',/reproduzir|reproduce/),id)}}]),
  {ex:'w',t:{pt:'Português ou inglês',en:'Portuguese or English'},seg:[
-  {alvo:'#btnLang',pt:'Por fim, este botão muda a língua entre português e inglês. E eu falo nas duas.',en:'Finally, this button switches the language between Portuguese and English. And I speak both.',antes:async id=>{fechaJanelas();const b=$('#btnLang');if(b){const [x,y]=centro(b);await cursorPara(x+6,y,id)}}}]},
- {ex:'p',t:{pt:'Pergunta rápida',en:'Quick question'},seg:[{pt:'Dentro de um país, o que quer dizer um quadrado vermelho?',en:'Inside a country, what does a red square mean?'}],
+  {alvo:'#btnLang',ex:'r',pt:'Por fim, este botão muda a língua entre português e inglês. E eu falo nas duas.',en:'Finally, this button switches the language between Portuguese and English. And I speak both.',antes:async id=>{fechaJanelas();await aponta('#btnLang')(id)}}]},
+ {ex:'c',t:{pt:'Pergunta rápida',en:'Quick question'},seg:[{ex:'c',pt:'Dentro de um país, o que quer dizer um quadrado vermelho?',en:'Inside a country, what does a red square mean?'}],
   op:{pt:['Metano alto face à sua latitude','Muita chuva','Temperatura alta'],en:['High methane for its latitude','A lot of rain','High temperature']},certo:0},
- {ex:'p',t:{pt:'Última pergunta',en:'Last question'},seg:[{pt:'Que satélite europeu confirmou que o metano está a subir em todo o mundo?',en:'Which European satellite confirmed that methane is rising worldwide?'}],
+ {ex:'c',t:{pt:'Última pergunta',en:'Last question'},seg:[{ex:'p',pt:'Que satélite europeu confirmou que o metano está a subir em todo o mundo?',en:'Which European satellite confirmed that methane is rising worldwide?'}],
   op:{pt:['Sentinel-5P','Hubble','GPM'],en:['Sentinel-5P','Hubble','GPM']},certo:0},
- {ex:'f',salta:1,fim:1,t:{pt:'Já sabes usar a EcoCell',en:'You know how to use EcoCell'},seg:[
-  {get pt(){return`Acertaste ${BOT.pts} de 2.`},get en(){return`You got ${BOT.pts} out of 2.`}},
-  {pt:'Agora explora à vontade. Se precisares de mim, carrega no logotipo no canto inferior direito.',en:'Now explore freely. If you need me, press the logo in the bottom-right corner.'}]}];
+ {ex:'r',salta:1,fim:1,t:{pt:'Já sabes usar a EcoCell',en:'You know how to use EcoCell'},seg:[
+  {ex:'r',get pt(){return`Acertaste ${BOT.pts} de 2.`},get en(){return`You got ${BOT.pts} out of 2.`}},
+  {ex:'f',pt:'Agora explora à vontade. Se precisares de mim, carrega no logotipo no canto inferior direito.',en:'Now explore freely. If you need me, press the logo in the bottom-right corner.'}]}];
 /* --- interface da Eco --- */
 function botSegue(){if(BOT.on){GL.idle=performance.now()}const ev=$('#ecoVoo');if(ev)ev.classList.toggle('fala',$('#bot').classList.contains('fala'));/* a boca da Eco a voar mexe-se quando ela fala */const sp=$('#spot'),el=BOT.el,bot=$('#bot');if(!el||!el.getClientRects().length){sp.classList.remove('on');bot.classList.remove('cima');return}
  const r=el.getBoundingClientRect(),p=6;Object.assign(sp.style,{left:r.left-p+'px',top:r.top-p+'px',width:r.width+2*p+'px',height:r.height+2*p+'px'});sp.classList.add('on');
  const b=$('#botBal').getBoundingClientRect(),cobre=r.bottom>innerHeight-b.height-140&&r.top>innerHeight*.35;bot.classList.toggle('cima',cobre)}   // a Eco sobe quando taparia o elemento
-function botBotoes(){$('#botVel').textContent=String(VEL).replace('.',LANG==='en'?'.':',')+'×';$('#botVel').title=L2('Velocidade da Eco (carrega para mudar)','Eco speed (press to change)');$('#botPau').innerHTML=BOT.pausado?ICO.play:ICO.pausa;$('#botPau').title=BOT.pausado?L2('Continuar','Resume'):L2('Pausar','Pause');$('#botAnt').title=L2('Passo anterior','Previous step');$('#botSeg').title=L2('Passo seguinte','Next step');
+function menuVozes(){const s=$('#botVozSel2'),vs=vozes().sort((a,b)=>notaVoz(b)-notaVoz(a)),v=escolheVoz();$('#botMenuL').textContent=L2('Voz da Eco','Eco voice');$('#botTesta').textContent=L2('Ouvir esta voz','Hear this voice');
+ $('#botMenuNota').textContent=L2('As vozes vêm do browser. No Microsoft Edge há vozes naturais (★), muito melhores.','Voices come from the browser. Microsoft Edge has much better natural voices (★).');
+ s.innerHTML=vs.length?vs.map(x=>`<option value="${x.name.replace(/"/g,'&quot;')}"${v&&x.name===v.name?' selected':''}>${x.name.replace(/^(Microsoft|Google)\s+/,'').replace(/\s+-\s+.*$/,'')}${/natural|online|neural|google/i.test(x.name)?' ★':''}${VOZ_M.test(x.name)?L2(' (masculina)',' (male)'):''}</option>`).join(''):`<option>${L2('Sem vozes neste browser','No voices in this browser')}</option>`}
+function botBotoes(){$('#botCfg').innerHTML=ICO.cfg;$('#botCfg').title=L2('Escolher a voz','Choose the voice');$('#botVel').textContent=String(VEL).replace('.',LANG==='en'?'.':',')+'×';$('#botVel').title=L2('Velocidade da Eco (carrega para mudar)','Eco speed (press to change)');$('#botPau').innerHTML=BOT.pausado?ICO.play:ICO.pausa;$('#botPau').title=BOT.pausado?L2('Continuar','Resume'):L2('Pausar','Pause');$('#botAnt').title=L2('Passo anterior','Previous step');$('#botSeg').title=L2('Passo seguinte','Next step');
  $('#botVoz').innerHTML=BOT.voz?ICO.som:ICO.mudo;$('#botVoz').classList.toggle('on',BOT.voz);$('#botVoz').title=BOT.voz?L2('Desligar a voz','Turn voice off'):L2('Ligar a voz','Turn voice on');$('#botX').title=L2('Terminar a visita','End the tour')}
 function quiz(s,id){return new Promise(res=>{const q=$('#botQ'),ops=s.op[LANG]||s.op.pt;q.innerHTML='';let feito=false;
  ops.forEach((o,i)=>{const b=document.createElement('button');b.className='b';b.textContent=o;q.appendChild(b);
-  b.onclick=async()=>{if(feito)return;feito=true;const ok=i===s.certo;if(ok)BOT.pts++;b.classList.add(ok?'certo':'errado');q.children[s.certo].classList.add('certo');cara(ok?'f':'s',ok);if(ok)botFesta(26);
+  b.onclick=async()=>{if(feito)return;feito=true;const ok=i===s.certo;if(ok)BOT.pts++;b.classList.add(ok?'certo':'errado');q.children[s.certo].classList.add('certo');cara(ok?'r':'t',ok);if(ok)botFesta(26);
    try{await diz(ok?L2('Exatamente, muito bem!','Exactly, well done!'):L2('Quase! A resposta certa está a verde.','Close! The right answer is in green.'),id)}catch(e){}res()}})})}
 const txt=g=>{const v=g[LANG]!==undefined?g[LANG]:g.pt;return typeof v==='function'?v():v};
 async function botCorre(k,g0=0){const id=++BOT.run;BOT.k=Math.max(0,Math.min(BOT_PASSOS.length-1,k));const s=BOT_PASSOS[BOT.k];BOT.pausado=false;   // g0: recomeçar a meio do passo (ex.: ao mudar de língua)
@@ -908,10 +957,10 @@ async function botCorre(k,g0=0){const id=++BOT.run;BOT.k=Math.max(0,Math.min(BOT
    let frase;try{frase=txt(g)}catch(e){frase=L2('Faltam dados para esta parte.','Data for this part is missing.')}
    await diz(frase,id);vivo(id);
    if(g.a)await g.a(id);
-   await espera(g.p||1300,id)}
+   await espera(g.p||900,id)}
   if(s.op){await quiz(s,id);vivo(id);await espera(1500,id)}
   if(s.fim){$('#botCur').style.opacity=0;foca(null);botFesta(40);if(BOT_VIDEO){const b=document.createElement('button');b.className='b';b.textContent=L2('Ver o vídeo da EcoCell','Watch the EcoCell video');b.onclick=()=>{$('#botVid iframe').src=BOT_VIDEO+(BOT_VIDEO.includes('?')?'&':'?')+'autoplay=1';$('#botVid').hidden=false};$('#botQ').appendChild(b)}return}
-  await espera(1800,id);botCorre(BOT.k+1)}catch(e){if(!(e instanceof Cancela))console.error(e)}}
+  await espera(1200,id);botCorre(BOT.k+1)}catch(e){if(!(e instanceof Cancela))console.error(e)}}
 function botFesta(n){if(reduzir())return;const r=$('#botAv').getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,cores=['#5ff0ff','#4cc38a','#ff9a3c','#ffd27a','#8be04e'];
  for(let i=0;i<n;i++){const c=document.createElement('i');c.className='confete';c.style.cssText=`background:${cores[i%5]};left:${x}px;top:${y}px`;document.body.appendChild(c);const a=Math.random()*Math.PI*2,d=60+Math.random()*130;
   c.animate([{transform:'translate(0,0) rotate(0)',opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d-70}px) rotate(${Math.random()*720}deg)`,opacity:0}],{duration:900+Math.random()*600,easing:'cubic-bezier(.2,.8,.3,1)'}).onfinish=()=>c.remove()}}
@@ -932,6 +981,10 @@ function botEnd(){if(!BOT.on)return;BOT.on=false;BOT.run++;if('speechSynthesis' 
  botVoa(false,()=>{bot.hidden=true;bot.style.opacity='';$('#logo').style.visibility=''});bot.style.opacity=0;fechaJanelas();setLayer('n');if(lvl)world();if(GL.on!==BOT.modo0)glToggle(BOT.modo0)}
 $('#btnTour').onclick=()=>BOT.on?botEnd():botStart();$('#logo').onclick=()=>{if(!BOT.on)botStart()};$('#logo').title='Eco: visita guiada';$('#botAv').onclick=()=>{cara('f',1);botFesta(16)};
 $('#botSeg').onclick=()=>BOT.k===BOT_PASSOS.length-1?botEnd():botCorre(BOT.k+1);$('#botAnt').onclick=()=>botCorre(BOT.k-1);$('#botX').onclick=botEnd;
+$('#botCfg').onclick=e=>{e.stopPropagation();const m=$('#botMenu');m.hidden=!m.hidden;if(!m.hidden)menuVozes()};
+$('#botVozSel2').onchange=e=>{BOT.nomeVoz=e.target.value;try{localStorage.setItem('ecocell-voz-nome',BOT.nomeVoz)}catch(x){}};   // vale a partir da frase seguinte
+$('#botTesta').onclick=()=>{if(!('speechSynthesis' in window))return;const v=escolheVoz();speechSynthesis.cancel();speechSynthesis.resume();const u=new SpeechSynthesisUtterance(L2('Olá! Eu sou a Eco.','Hi! I am Eco.'));if(v){u.voice=v;u.lang=v.lang}u.rate=(LANG==='en'?1:1.05)*VEL;BOT.uT=u;speechSynthesis.speak(u)};
+document.addEventListener('click',e=>{const m=$('#botMenu');if(m&&!m.hidden&&!e.target.closest('#botMenu,#botCfg'))m.hidden=true});
 $('#botVel').onclick=()=>{VEL=VELS[(VELS.indexOf(VEL)+1)%VELS.length];RITMO=RITMO_BASE/VEL;try{localStorage.setItem('ecocell-vel',VEL)}catch(e){}botBotoes()};   // vale a partir da frase seguinte
 $('#botPau').onclick=()=>{BOT.pausado=!BOT.pausado;if('speechSynthesis' in window)BOT.pausado?speechSynthesis.pause():speechSynthesis.resume();botBotoes()};
 // ligar/desligar a voz não recomeça nada: desligar cala a frase atual (o texto continua); ligar vale a partir da frase seguinte
