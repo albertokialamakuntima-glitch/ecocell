@@ -76,6 +76,7 @@ html,body{height:100%;overflow:hidden}
 #botAv[data-ex="f"] .bracoD,#botAv[data-ex="r"] .bracoD,#ecoVoo:not(.aponta)[data-ex="f"] .bracoD,#ecoVoo:not(.aponta)[data-ex="r"] .bracoD{animation:aceno .45s ease-in-out 6 alternate}@keyframes aceno{from{transform:rotate(-135deg)}to{transform:rotate(-170deg)}}
 #botAv[data-ex="c"] .bracoE,#ecoVoo:not(.aponta)[data-ex="c"] .bracoE{transform:rotate(155deg)}#ecoVoo.aponta svg{animation:none}#ecoVoo.aponta.toca svg{animation:salta .5s cubic-bezier(.3,1.6,.5,1)}
 .cara{filter:drop-shadow(0 0 2px rgba(95,240,255,.9))}
+#botCfg.dica{box-shadow:0 0 0 2px #5ff0ff,0 0 12px 2px rgba(95,240,255,.7);animation:brilha .8s infinite alternate}
 #botEst{font:inherit;font-size:13px;padding:6px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg)}
 #botVozSel2{font:inherit;font-size:13px;padding:6px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg)}#botMenu small{color:var(--mut);font-size:11.5px;line-height:1.35}
 .onda{position:fixed;z-index:64;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:3px solid #5ff0ff;pointer-events:none;animation:onda .65s ease-out forwards}@keyframes onda{from{transform:scale(.2);opacity:1}to{transform:scale(1.8);opacity:0}}
@@ -770,6 +771,7 @@ const L2=(pt,en)=>LANG==='en'?en:pt,idxPais=en=>D.countries.findIndex(c=>c.en===
 class Cancela{}
 const vivo=id=>{if(id!==BOT.run||!BOT.on)throw new Cancela()};
 // Velocidade da Eco (botão «1×» no balão): VEL multiplica a velocidade da voz e divide as pausas e os movimentos. RITMO_BASE é o ritmo a 1×.
+const PAUSA=.35;   // fração das pausas entre frases e entre passos (1 = pausas originais, mais longas)
 const RITMO_BASE=1,VELS=[.75,1,1.25,1.5];let VEL=1;try{const v=+localStorage.getItem('ecocell-vel');if(VELS.includes(v))VEL=v}catch(e){}let RITMO=RITMO_BASE/VEL;
 async function espera(ms,id,semRitmo){let t=0;if(!semRitmo)ms*=RITMO;while(t<ms){vivo(id);await new Promise(r=>setTimeout(r,50));if(!BOT.pausado)t+=50}vivo(id)}
 const centro=el=>{const r=el.getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2]};
@@ -814,11 +816,35 @@ function notaVoz(v){const lg=LANG==='en'?'en':'pt',loc=BOT.estilo==='locutor';le
  if(VOZ_F[lg].test(v.name))s+=loc?-6:5;if(VOZ_M.test(v.name))s+=loc?10:-12;return s}
 function escolheVoz(){const vs=vozes();if(!vs.length)return null;return vs.find(v=>v.name===BOT.nomeVoz)||vs.slice().sort((a,b)=>notaVoz(b)-notaVoz(a))[0]}   /* a voz escolhida no menu ⚙ tem prioridade */
 function avisoVoz(m){const a=$('#botAviso');if(!a)return;a.textContent=m;a.hidden=!m}
+/* --- vozes neurais Piper: abertas (licença MIT), treinadas com gravações de locutores reais e sintetizadas no próprio browser.
+   Em português só existem vozes masculinas. Cada voz descarrega ~60 MB na primeira vez e fica guardada no browser.
+   Com estas vozes o texto avança exatamente com o áudio (pelo tempo do próprio áudio). --- */
+const PIPER_JS='https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
+const PIPER={pt:[['pt_PT-tugão-medium','Tugão (Portugal, masculina)'],['pt_BR-faber-medium','Faber (Brasil, masculina)'],['pt_BR-edresson-low','Edresson (Brasil, masculina, mais leve)']],
+ en:[['en_GB-jenny_dioco-medium','Jenny (UK, female)'],['en_US-amy-medium','Amy (US, female)'],['en_GB-alan-medium','Alan (UK, male)'],['en_US-joe-medium','Joe (US, male)']]};
+let piperMod=null,piperFila=Promise.resolve();const piperCache=new Map();
+const piperVoz=()=>{const n=BOT.nomeVoz||'';if(!n.startsWith('piper:'))return null;const id=n.slice(6);return(PIPER[LANG==='en'?'en':'pt'].find(v=>v[0]===id)||[null])[0]};
+function piperGera(t,voz){const k=voz+'|'+t;if(piperCache.has(k))return piperCache.get(k);   // uma frase de cada vez (a síntese usa muito processador); guarda as últimas
+ const p=piperFila.then(async()=>{if(!piperMod)piperMod=await import(PIPER_JS);
+  // os ficheiros do motor (ONNX Runtime) têm de ser da MESMA versão que o código que o jsDelivr carrega (1.27.0); a biblioteca aponta para a 1.18.0 e falhava
+  const S=await piperMod.TtsSession.create({voiceId:voz,wasmPaths:{onnxWasm:'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/',piperData:piperMod.WASM_BASE+'.data',piperWasm:piperMod.WASM_BASE+'.wasm'},
+   progress:pr=>{if(pr&&pr.total&&pr.loaded<pr.total)avisoVoz(L2('A descarregar a voz neural','Downloading the neural voice')+`: ${Math.round(pr.loaded/pr.total*100)}% (${Math.round(pr.total/1048576)} MB, ${L2('só da primeira vez','first time only')})`)}});
+  return S.predict(t)});
+ piperFila=p.catch(()=>{});piperCache.set(k,p);p.catch(()=>piperCache.delete(k));if(piperCache.size>40)piperCache.delete(piperCache.keys().next().value);return p}
+async function dizPiper(t,id,voz){let blob;try{blob=await piperGera(t,voz)}catch(e){console.warn('voz neural indisponível',e);avisoVoz(L2('A voz neural não funcionou neste browser; uso a voz do browser.','The neural voice did not work in this browser; using the browser voice.'));BOT.nomeVoz='';return diz(t,id)}
+ vivo(id);avisoVoz('');
+ return new Promise(res=>{const box=$('#botTx'),bot=$('#bot');box.querySelectorAll('.fr').forEach(x=>x.classList.add('lida'));const sp=document.createElement('span');sp.className='fr';box.appendChild(sp);box.appendChild(document.createTextNode(' '));
+  const a=new Audio(URL.createObjectURL(blob));a.playbackRate=Math.max(.5,Math.min(2,VEL*(BOT.estilo==='locutor'?1.08:1)));BOT.audio=a;let fim=false;
+  const acaba=()=>{if(fim)return;fim=true;clearInterval(BOT.ti);sp.textContent=t;box.scrollTop=box.scrollHeight;bot.classList.remove('fala','escreve');URL.revokeObjectURL(a.src);if(BOT.audio===a)BOT.audio=null;res()};
+  a.onplaying=()=>{BOT.ouviu=true;bot.classList.add('fala','escreve');clearInterval(BOT.ti);   // o texto segue o tempo do áudio: começa e acaba com a voz
+   BOT.ti=setInterval(()=>{if(fim)return;if(id!==BOT.run||!BOT.on){a.pause();acaba();return}const f=a.duration?Math.min(1,a.currentTime/a.duration):0;sp.textContent=t.slice(0,Math.round(t.length*f));box.scrollTop=box.scrollHeight},40)};
+  a.onpause=()=>bot.classList.remove('fala');a.onended=acaba;a.onerror=acaba;
+  a.play().catch(()=>{avisoVoz(L2('O browser bloqueou o som: carrega em qualquer sítio da página.','The browser blocked the sound: click anywhere on the page.'));sp.textContent=t;espera(Math.max(2200,t.length*62),id,1).then(acaba,acaba)})})}
 /* --- uma frase: o texto só começa a aparecer QUANDO a voz começa a falar (evento onstart) e avança palavra a palavra com ela.
    Se a voz estiver desligada, não arrancar em 1,5 s ou «acabar» cedo demais (erro do Chrome), o texto aparece ao ritmo de leitura. --- */
-function diz(t,id){return new Promise(res=>{const box=$('#botTx'),bot=$('#bot');box.querySelectorAll('.fr').forEach(x=>x.classList.add('lida'));
+function diz(t,id){const pv=BOT.voz&&piperVoz();if(pv)return dizPiper(t,id,pv);return new Promise(res=>{const box=$('#botTx'),bot=$('#bot');box.querySelectorAll('.fr').forEach(x=>x.classList.add('lida'));
  const sp=document.createElement('span');sp.className='fr';box.appendChild(sp);box.appendChild(document.createTextNode(' '));
- const temVoz=BOT.voz&&'speechSynthesis' in window,v=temVoz?escolheVoz():null,est=t.length*62/VEL;let fim=false,bnd=false,i=0,comecou=false,t0=0;bot.classList.add('fala');
+ const temVoz=BOT.voz&&'speechSynthesis' in window,v=temVoz?escolheVoz():null,est=t.length*(BOT.mpc||62/VEL);   /* BOT.mpc: milissegundos por letra medidos nesta voz, para a escrita acompanhar o ritmo real dela */let fim=false,bnd=false,i=0,comecou=false,t0=0;bot.classList.add('fala');
  const acaba=()=>{if(fim)return;fim=true;clearInterval(BOT.ti);sp.textContent=t;box.scrollTop=box.scrollHeight;bot.classList.remove('fala','escreve');res()};
  const escreve=()=>{if(comecou)return;comecou=true;t0=performance.now();bot.classList.add('escreve');if(reduzir()){sp.textContent=t;return}const passo=t.length/(est/40);clearInterval(BOT.ti);
   BOT.ti=setInterval(()=>{if(BOT.pausado||bnd)return;i=Math.min(t.length,i+passo);sp.textContent=t.slice(0,Math.round(i));box.scrollTop=box.scrollHeight;if(i>=t.length)bot.classList.remove('escreve')},40)};
@@ -826,11 +852,11 @@ function diz(t,id){return new Promise(res=>{const box=$('#botTx'),bot=$('#bot');
  if(!temVoz){escreve();leitura().then(acaba,acaba);return}
  // sem voz instalada para a língua: deixa o browser escolher pela língua (melhor do que ficar em silêncio)
  const u=new SpeechSynthesisUtterance(t);if(v)u.voice=v;u.lang=v?v.lang:(LANG==='en'?'en-GB':'pt-PT');u.rate=Math.max(.6,Math.min(2,(LANG==='en'?1:1.05)*VEL*(BOT.estilo==='locutor'?1.12:1)));u.pitch=BOT.estilo==='locutor'?.95:1.05;BOT.u=u;   // guardar a referência: o Chrome perde os eventos se a frase for recolhida da memória
- u.onstart=()=>{BOT.ouviu=true;avisoVoz('');escreve()};
+ u.onstart=()=>{BOT.ouviu=true;avisoVoz('');if(comecou){comecou=false;bnd=false;i=0;sp.textContent=''}escreve()};   // se o texto já tinha começado sem a voz, recomeça junto com ela
  u.onboundary=e=>{if(e.name&&e.name!=='word')return;escreve();bnd=true;const w=(t.slice(e.charIndex).match(/^\S+/)||[''])[0];sp.textContent=t.slice(0,e.charIndex+(e.charLength||w.length));box.scrollTop=box.scrollHeight};
- u.onend=()=>{bot.classList.remove('fala');if(comecou&&performance.now()-t0>est*.35)acaba();else{escreve();leitura().then(acaba,acaba)}};
+ u.onend=()=>{bot.classList.remove('fala');const dt=performance.now()-t0;if(comecou&&dt>est*.35&&t.length>25)BOT.mpc=BOT.mpc?(BOT.mpc*.6+dt/t.length*.4):dt/t.length;if(comecou&&dt>est*.35)acaba();else{escreve();leitura().then(acaba,acaba)}};
  u.onerror=e=>{bot.classList.remove('fala');if(e.error&&!/interrupted|canceled/.test(e.error))avisoVoz(L2('A voz falhou neste browser','The voice failed in this browser')+` (${e.error}). `+L2('Experimenta o Microsoft Edge ou o Google Chrome.','Try Microsoft Edge or Google Chrome.'));escreve();leitura().then(acaba,acaba)};
- setTimeout(()=>{if(!fim)escreve()},1500);   // a voz não arrancou: o texto aparece na mesma
+ setTimeout(()=>{if(!fim)escreve()},3000);   // a voz não arrancou: o texto aparece na mesma
  setTimeout(()=>{if(!BOT.ouviu&&id===BOT.run&&BOT.voz)avisoVoz(vozes().length?L2('Não estou a conseguir falar: confirma o som do computador e do browser.','I cannot speak: check the computer and browser sound.'):L2('Este browser não tem vozes em português instaladas. O Microsoft Edge tem vozes naturais gratuitas.','This browser has no English voices installed. Microsoft Edge has free natural voices.'))},5000);
  setTimeout(()=>{if(!fim)leitura().then(acaba,acaba)},est*3+6000);
  // limpa a fila e tira a voz de «pausa» (o Chrome fica mudo para sempre se a fila ficar pausada), depois fala logo
@@ -957,10 +983,13 @@ function botSegue(){if(BOT.on){GL.idle=performance.now()}const ev=$('#ecoVoo');i
  const b=$('#botBal').getBoundingClientRect(),cobre=r.bottom>innerHeight-b.height-140&&r.top>innerHeight*.35;bot.classList.toggle('cima',cobre)}   // a Eco sobe quando taparia o elemento
 function menuVozes(){const s=$('#botVozSel2'),vs=vozes().sort((a,b)=>notaVoz(b)-notaVoz(a)),v=escolheVoz();$('#botMenuL').textContent=L2('Voz da Eco','Eco voice');$('#botTesta').textContent=L2('Ouvir esta voz','Hear this voice');
  $('#botEstL').textContent=L2('Estilo','Style');$('#botEst').options[0].textContent=L2('Eco (feminina, calma)','Eco (female, calm)');$('#botEst').options[1].textContent=L2('Locutor (masculina, enérgica)','Announcer (male, energetic)');$('#botEst').value=BOT.estilo||'eco';
- $('#botMenuNota').textContent=L2(`Neste browser há ${vs.length} voz(es) em português. As vozes vêm do browser e do sistema: no Microsoft Edge aparecem vozes naturais (★) como Raquel, Duarte, Francisca e Antonio. No Windows podes juntar mais em Definições › Hora e idioma › Voz › Adicionar vozes, e depois reabrir o browser.`,
+ $('#botMenuNota').textContent=L2(`As «vozes neurais reais» funcionam em qualquer browser (em português são masculinas) e descarregam ~60 MB só da primeira vez. Neste browser há ainda ${vs.length} voz(es) do sistema. As vozes do sistema vêm do browser: no Microsoft Edge aparecem vozes naturais (★) como Raquel, Duarte, Francisca e Antonio. No Windows podes juntar mais em Definições › Hora e idioma › Voz › Adicionar vozes, e depois reabrir o browser.`,
   `This browser has ${vs.length} English voice(s). Voices come from the browser and the system: Microsoft Edge shows natural voices (★). On Windows you can add more in Settings › Time & language › Speech › Add voices, then reopen the browser.`);
- s.innerHTML=vs.length?vs.map(x=>`<option value="${x.name.replace(/"/g,'&quot;')}"${v&&x.name===v.name?' selected':''}>${x.name.replace(/^(Microsoft|Google)\s+/,'').replace(/\s+-\s+.*$/,'')}${/natural|online|neural|google/i.test(x.name)?' ★':''}${VOZ_M.test(x.name)?L2(' (masculina)',' (male)'):''}</option>`).join(''):`<option>${L2('Sem vozes neste browser','No voices in this browser')}</option>`}
-function botBotoes(){$('#botCfg').innerHTML=ICO.cfg;$('#botCfg').title=L2('Escolher a voz','Choose the voice');$('#botVel').textContent=String(VEL).replace('.',LANG==='en'?'.':',')+'×';$('#botVel').title=L2('Velocidade da Eco (carrega para mudar)','Eco speed (press to change)');$('#botPau').innerHTML=BOT.pausado?ICO.play:ICO.pausa;$('#botPau').title=BOT.pausado?L2('Continuar','Resume'):L2('Pausar','Pause');$('#botAnt').title=L2('Passo anterior','Previous step');$('#botSeg').title=L2('Passo seguinte','Next step');
+ const pv=piperVoz(),neur=PIPER[LANG==='en'?'en':'pt'].map(([id,nm])=>`<option value="piper:${id}"${pv===id?' selected':''}>${nm}</option>`).join('');
+ const nav=vs.map(x=>`<option value="${x.name.replace(/"/g,'&quot;')}"${!pv&&v&&x.name===v.name?' selected':''}>${x.name.replace(/^(Microsoft|Google)\s+/,'').replace(/\s+-\s+.*$/,'')}${/natural|online|neural|google/i.test(x.name)?' ★':''}${VOZ_M.test(x.name)?L2(' (masculina)',' (male)'):''}</option>`).join('');
+ s.innerHTML=`<optgroup label="${L2('Vozes neurais reais (~60 MB na 1.ª vez)','Real neural voices (~60 MB first time)')}">${neur}</optgroup><optgroup label="${L2('Vozes do browser','Browser voices')}">${nav||`<option disabled>${L2('Sem vozes neste browser','No voices in this browser')}</option>`}</optgroup>`}
+function botBotoes(){$('#botCfg').innerHTML=ICO.cfg;$('#botCfg').title=L2('Escolher a voz','Choose the voice');
+ const roboticas=!piperVoz()&&!vozes().some(v=>/natural|online|neural|google/i.test(v.name));$('#botCfg').classList.toggle('dica',roboticas);if(roboticas)$('#botCfg').title=L2('Há vozes mais naturais aqui','More natural voices here');   // só vozes robóticas: o ⚙ pisca para mostrar as vozes neurais$('#botVel').textContent=String(VEL).replace('.',LANG==='en'?'.':',')+'×';$('#botVel').title=L2('Velocidade da Eco (carrega para mudar)','Eco speed (press to change)');$('#botPau').innerHTML=BOT.pausado?ICO.play:ICO.pausa;$('#botPau').title=BOT.pausado?L2('Continuar','Resume'):L2('Pausar','Pause');$('#botAnt').title=L2('Passo anterior','Previous step');$('#botSeg').title=L2('Passo seguinte','Next step');
  $('#botVoz').innerHTML=BOT.voz?ICO.som:ICO.mudo;$('#botVoz').classList.toggle('on',BOT.voz);$('#botVoz').title=BOT.voz?L2('Desligar a voz','Turn voice off'):L2('Ligar a voz','Turn voice on');$('#botX').title=L2('Terminar a visita','End the tour')}
 function quiz(s,id){return new Promise(res=>{const q=$('#botQ'),ops=s.op[LANG]||s.op.pt;q.innerHTML='';let feito=false;
  ops.forEach((o,i)=>{const b=document.createElement('button');b.className='b';b.textContent=o;q.appendChild(b);
@@ -968,18 +997,19 @@ function quiz(s,id){return new Promise(res=>{const q=$('#botQ'),ops=s.op[LANG]||
    try{await diz(ok?L2('Exatamente, muito bem!','Exactly, well done!'):L2('Quase! A resposta certa está a verde.','Close! The right answer is in green.'),id)}catch(e){}res()}})})}
 const txt=g=>{const v=g[LANG]!==undefined?g[LANG]:g.pt;return typeof v==='function'?v():v};
 async function botCorre(k,g0=0){const id=++BOT.run;BOT.k=Math.max(0,Math.min(BOT_PASSOS.length-1,k));const s=BOT_PASSOS[BOT.k];BOT.pausado=false;   // g0: recomeçar a meio do passo (ex.: ao mudar de língua)
- if('speechSynthesis' in window){speechSynthesis.cancel();speechSynthesis.resume()}clearInterval(BOT.ti);$('#botQ').innerHTML='';$('#botTx').innerHTML='';foca(null);cara(s.ex,s.salta);
+ if('speechSynthesis' in window){speechSynthesis.cancel();speechSynthesis.resume()}if(BOT.audio){BOT.audio.pause();BOT.audio=null}clearInterval(BOT.ti);$('#botQ').innerHTML='';$('#botTx').innerHTML='';foca(null);cara(s.ex,s.salta);
  $('#botSub').textContent=L2('assistente EcoCell','EcoCell assistant');$('#botT').textContent=txt(s.t);$('#botDots').innerHTML=BOT_PASSOS.map((_,i)=>`<i class="${i<=BOT.k?'on':''}"></i>`).join('');
  $('#botAnt').disabled=BOT.k===0;botBotoes();const g1=s.seg[g0];if(!g1||(!g1.antes&&!g1.a)||s.op||s.fim)ecoVolta();   // sem nada para apontar: a Eco volta ao balão
  try{for(let gi=g0;gi<s.seg.length;gi++){const g=s.seg[gi];BOT.g=gi;vivo(id);if('alvo' in g)foca(g.alvo);if(g.ex)cara(g.ex);
    if(g.antes)await g.antes(id);
    let frase;try{frase=txt(g)}catch(e){frase=L2('Faltam dados para esta parte.','Data for this part is missing.')}
+   const pv=BOT.voz&&piperVoz();if(pv){piperGera(frase,pv);const seg=[s.seg[gi+1],s.seg[gi+2],!s.seg[gi+1]&&BOT_PASSOS[BOT.k+1]&&BOT_PASSOS[BOT.k+1].seg[0]].filter(Boolean);for(const g2 of seg)try{piperGera(txt(g2),pv)}catch(e){}}   // prepara as 2 frases seguintes (e a 1.ª do passo seguinte) para não haver silêncios   // voz neural: prepara a frase seguinte enquanto esta é dita
    await diz(frase,id);vivo(id);
    if(g.a)await g.a(id);
-   await espera(g.p||900,id)}
-  if(s.op){await quiz(s,id);vivo(id);await espera(1500,id)}
+   await espera((g.p||900)*PAUSA,id)}
+  if(s.op){await quiz(s,id);vivo(id);await espera(1500*PAUSA,id)}
   if(s.fim){$('#botCur').style.opacity=0;foca(null);botFesta(40);if(BOT_VIDEO){const b=document.createElement('button');b.className='b';b.textContent=L2('Ver o vídeo da EcoCell','Watch the EcoCell video');b.onclick=()=>{$('#botVid iframe').src=BOT_VIDEO+(BOT_VIDEO.includes('?')?'&':'?')+'autoplay=1';$('#botVid').hidden=false};$('#botQ').appendChild(b)}return}
-  await espera(1200,id);botCorre(BOT.k+1)}catch(e){if(!(e instanceof Cancela))console.error(e)}}
+  await espera(1200*PAUSA,id);botCorre(BOT.k+1)}catch(e){if(!(e instanceof Cancela))console.error(e)}}
 function botFesta(n){if(reduzir())return;const r=$('#botAv').getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,cores=['#5ff0ff','#4cc38a','#ff9a3c','#ffd27a','#8be04e'];
  for(let i=0;i<n;i++){const c=document.createElement('i');c.className='confete';c.style.cssText=`background:${cores[i%5]};left:${x}px;top:${y}px`;document.body.appendChild(c);const a=Math.random()*Math.PI*2,d=60+Math.random()*130;
   c.animate([{transform:'translate(0,0) rotate(0)',opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d-70}px) rotate(${Math.random()*720}deg)`,opacity:0}],{duration:900+Math.random()*600,easing:'cubic-bezier(.2,.8,.3,1)'}).onfinish=()=>c.remove()}}
@@ -996,19 +1026,20 @@ function botStart(){if(BOT.on)return;
  const bot=$('#bot'),lg=$('#logo');bot.classList.remove('cima');bot.style.opacity=0;bot.hidden=false;if('speechSynthesis' in window)speechSynthesis.getVoices();   // o Chrome carrega a lista de vozes de forma assíncrona
  requestAnimationFrame(()=>{botVoa(true,()=>{if(!BOT.on)return;bot.style.opacity='';if(!reduzir())bot.animate([{opacity:0,transform:'translateX(-50%) scale(.6)'},{opacity:1,transform:'translateX(-50%) scale(1)'}],{duration:400,easing:'cubic-bezier(.3,1.6,.5,1)'});botFesta(16);setTimeout(()=>{if(BOT.on)botCorre(0)},500)});lg.style.visibility='hidden'});
  clearInterval(BOT.seg);BOT.seg=setInterval(botSegue,200)}
-function botEnd(){if(!BOT.on)return;BOT.on=false;BOT.run++;if('speechSynthesis' in window)speechSynthesis.cancel();clearInterval(BOT.ti);clearInterval(BOT.seg);BOT.el=null;$('#spot').classList.remove('on');$('#botCur').style.opacity=0;$('#ecoVoo').classList.remove('on');$('#botAv').style.visibility='';const bot=$('#bot');
+function botEnd(){if(!BOT.on)return;BOT.on=false;BOT.run++;if('speechSynthesis' in window)speechSynthesis.cancel();if(BOT.audio){BOT.audio.pause();BOT.audio=null}clearInterval(BOT.ti);clearInterval(BOT.seg);BOT.el=null;$('#spot').classList.remove('on');$('#botCur').style.opacity=0;$('#ecoVoo').classList.remove('on');$('#botAv').style.visibility='';const bot=$('#bot');
  botVoa(false,()=>{bot.hidden=true;bot.style.opacity='';$('#logo').style.visibility=''});bot.style.opacity=0;fechaJanelas();setLayer('n');if(lvl)world();if(GL.on!==BOT.modo0)glToggle(BOT.modo0)}
 $('#btnTour').onclick=()=>BOT.on?botEnd():botStart();$('#logo').onclick=()=>{if(!BOT.on)botStart()};$('#logo').title='Eco: visita guiada';$('#botAv').onclick=()=>{cara('f',1);botFesta(16)};
 $('#botSeg').onclick=()=>BOT.k===BOT_PASSOS.length-1?botEnd():botCorre(BOT.k+1);$('#botAnt').onclick=()=>botCorre(BOT.k-1);$('#botX').onclick=botEnd;
 $('#botCfg').onclick=e=>{e.stopPropagation();const m=$('#botMenu');m.hidden=!m.hidden;if(!m.hidden)menuVozes()};
 $('#botEst').onchange=e=>{BOT.estilo=e.target.value;try{localStorage.setItem('ecocell-estilo',BOT.estilo)}catch(x){}BOT.nomeVoz='';try{localStorage.removeItem('ecocell-voz-nome')}catch(x){}menuVozes()};   // muda o estilo e deixa a Eco escolher a melhor voz para ele
-$('#botVozSel2').onchange=e=>{BOT.nomeVoz=e.target.value;try{localStorage.setItem('ecocell-voz-nome',BOT.nomeVoz)}catch(x){}};   // vale a partir da frase seguinte
-$('#botTesta').onclick=()=>{if(!('speechSynthesis' in window))return;const v=escolheVoz();speechSynthesis.cancel();speechSynthesis.resume();const u=new SpeechSynthesisUtterance(L2('Olá! Eu sou a Eco.','Hi! I am Eco.'));if(v){u.voice=v;u.lang=v.lang}u.rate=(LANG==='en'?1:1.05)*VEL;BOT.uT=u;speechSynthesis.speak(u)};
+$('#botVozSel2').onchange=e=>{BOT.nomeVoz=e.target.value;try{localStorage.setItem('ecocell-voz-nome',BOT.nomeVoz)}catch(x){}BOT.mpc=0;botBotoes();const pv=piperVoz();if(pv)piperGera(L2('Olá! Eu sou a Eco.','Hi! I am Eco.'),pv).catch(()=>{})};   // voz neural: começa já a descarregar   // vale a partir da frase seguinte
+$('#botTesta').onclick=()=>{const pv=piperVoz();if(pv){avisoVoz(L2('A preparar a voz…','Preparing the voice…'));piperGera(L2('Olá! Eu sou a Eco.','Hi! I am Eco.'),pv).then(b=>{avisoVoz('');const a=new Audio(URL.createObjectURL(b));BOT.aT=a;a.play()}).catch(()=>avisoVoz(L2('A voz neural não funcionou neste browser.','The neural voice did not work in this browser.')));return}
+ if(!('speechSynthesis' in window))return;const v=escolheVoz();speechSynthesis.cancel();speechSynthesis.resume();const u=new SpeechSynthesisUtterance(L2('Olá! Eu sou a Eco.','Hi! I am Eco.'));if(v){u.voice=v;u.lang=v.lang}u.rate=(LANG==='en'?1:1.05)*VEL;BOT.uT=u;speechSynthesis.speak(u)};
 document.addEventListener('click',e=>{const m=$('#botMenu');if(m&&!m.hidden&&!e.target.closest('#botMenu,#botCfg'))m.hidden=true});
 $('#botVel').onclick=()=>{VEL=VELS[(VELS.indexOf(VEL)+1)%VELS.length];RITMO=RITMO_BASE/VEL;try{localStorage.setItem('ecocell-vel',VEL)}catch(e){}botBotoes()};   // vale a partir da frase seguinte
-$('#botPau').onclick=()=>{BOT.pausado=!BOT.pausado;if('speechSynthesis' in window)BOT.pausado?speechSynthesis.pause():speechSynthesis.resume();botBotoes()};
+$('#botPau').onclick=()=>{BOT.pausado=!BOT.pausado;if('speechSynthesis' in window)BOT.pausado?speechSynthesis.pause():speechSynthesis.resume();if(BOT.audio)BOT.pausado?BOT.audio.pause():BOT.audio.play().catch(()=>{});botBotoes()};
 // ligar/desligar a voz não recomeça nada: desligar cala a frase atual (o texto continua); ligar vale a partir da frase seguinte
-$('#botVoz').onclick=()=>{BOT.voz=!BOT.voz;try{localStorage.setItem('ecocell-voz2',BOT.voz?'1':'0')}catch(e){}if(!BOT.voz&&'speechSynthesis' in window)speechSynthesis.cancel();avisoVoz('');botBotoes()};
+$('#botVoz').onclick=()=>{BOT.voz=!BOT.voz;try{localStorage.setItem('ecocell-voz2',BOT.voz?'1':'0')}catch(e){}if(!BOT.voz&&'speechSynthesis' in window)speechSynthesis.cancel();if(!BOT.voz&&BOT.audio){BOT.audio.pause();BOT.audio.dispatchEvent(new Event('ended'))}avisoVoz('');botBotoes()};
 $('#btnLang').addEventListener('click',()=>{if(BOT.on)setTimeout(()=>botCorre(BOT.k,BOT.g||0),60)});   // a Eco repete a frase atual na nova língua e continua dali
 $('#botVid').onclick=()=>{$('#botVid').hidden=true;$('#botVid iframe').src=''};
 addEventListener('keydown',e=>{if(!BOT.on||(e.target.closest&&e.target.closest('input,textarea,select')))return;
