@@ -127,7 +127,7 @@ const ZW={A:.35,T:.2,Q:.15,X:.3,conv:.2,evit:.25,auto:.15,inv:.4};let ZC=null,ZS
 const SEAL={ok:['circle-check','Confirmado','#1f7a4d'],part:['circle-half-stroke','Parcial','#b7791f'],no:['circle-xmark','Não confirmado','#b2182b'],na:['circle-question','Sem verificação','#6b7280']};
 const LV=['baixo','médio','alto'],CL=['var(--lo)','var(--me)','var(--hi)'];
 const C=D.cells.map((a,i)=>({i,lat:a[0],lon:a[1],m:a[2],ch:a[3],an:a[4],sc:a[5],lv:a[6],sea:a[7],ci:a[8],rk:a[9],rc:a[10]??null}));
-let W=innerWidth||800,H=innerHeight||600,S=Math.max(W/6.32,H/3.6);const $=s=>document.querySelector(s),proj=d3.geoMercator().center([0,20]).scale(S).translate([W/2,H/2]);
+let W=innerWidth||800,H=innerHeight||600,S=Math.max(W/(2*Math.PI),H/3.6);const $=s=>document.querySelector(s),proj=d3.geoMercator().center([0,20]).scale(S).translate([W/2,H/2]);
 const P=r=>'M'+r.map(p=>proj(p).map(v=>v.toFixed(1)).join(',')).join('L')+'Z';
 const GP=g=>(g.type==='Polygon'?[g.coordinates]:g.coordinates).map(pl=>pl.map(P).join('')).join('');
 const cp=c=>P([[c.lon-.5,c.lat-.5],[c.lon-.5,c.lat+.5],[c.lon+.5,c.lat+.5],[c.lon+.5,c.lat-.5]]);
@@ -162,8 +162,10 @@ const cl0=lg.selectAll('.cn').data(CN).join('text').attr('class','cn').text(c=>c
 const cl=lg.selectAll('.cn');
 legend();
 function labels(k,fn){lab.style('display',f=>fn(f.properties)?null:'none').attr('font-size',10/k).style('stroke-width',3/k)}
-const zoom=d3.zoom().clickDistance(8).tapDistance(12).scaleExtent([.8,150]).on('zoom',e=>{const k=e.transform.k;g.attr('transform',e.transform);lab.attr('font-size',10/k).style('stroke-width',3/k);cl.attr('font-size',function(){return this.dataset.fs/k}).style('stroke-width',2.5/k)});
+const zoom=d3.zoom().clickDistance(8).tapDistance(12).scaleExtent([1,150]).on('zoom',e=>{const k=e.transform.k;g.attr('transform',e.transform);lab.attr('font-size',10/k).style('stroke-width',3/k);cl.attr('font-size',function(){return this.dataset.fs/k}).style('stroke-width',2.5/k)});
 svg.call(zoom).on('dblclick.zoom',null);
+// o mundo ocupa sempre o ecrã todo: não se afasta abaixo de 1× nem se arrasta para fora (sem faixas escuras nas bordas)
+function zExt(){const a=proj([-180,85.0511287798]),b=proj([180,-85.0511287798]);zoom.translateExtent([[a[0],Math.min(a[1],0)],[b[0],Math.max(b[1],H)]])}zExt();
 svg.on('click',e=>{if(e.target!==svg.node())return;const ll=proj.invert(d3.zoomTransform(svg.node()).invert(d3.pointer(e,svg.node())));
  $('#info').innerHTML=`<h2>Mar aberto</h2><p class="mut">${ll[1].toFixed(2)}°, ${ll[0].toFixed(2)}°</p><p><b>Sem informações de metano neste ponto.</b></p><p class="mut">Só há células em terra e junto à costa. Clica num país para ver os dados.</p>`});
 function tf(k,cx,cy){svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity.translate(W/2-k*cx,H/2-k*cy).scale(k))}
@@ -223,7 +225,7 @@ function sim(c){$('#sim').innerHTML=`<h2 style="margin-top:14px">Simulação Eco
  <tr><td>Anomalia (ppb)</td><td>${c.an.toFixed(1)}</td><td>${(c.an*(1-p)).toFixed(1)}</td><td>${(-c.an*p).toFixed(1)}</td></tr></table>
  <p class="mut">CH₄ captado ${cap.toFixed(1)} t/dia · eletricidade ${(cap*13.9*e).toFixed(0)} MWh/dia · CO₂ gerado ${(cap*2.75).toFixed(1)} t/dia · H₂ máx. teórico ${(cap*.5).toFixed(1)} t/dia. Base: GWP100 do CH₄ = 29,8; 13,9 kWh térmicos por kg; 2,75 t CO₂ por t CH₄ oxidado. A anomalia cai em proporção à captura (ilustrativo). Biomassa não é calculada: falta o rendimento medido da EcoCell.</p>`};
  ['s1','s2','s3'].forEach(id=>$('#'+id).oninput=f);f();$('#openTw').onclick=()=>openWin('g',true);$('#openZ').onclick=()=>{ZC=c;zonaRender();openWin('p',true)}}
-function relayout(){W=innerWidth||W;H=innerHeight||H;S=Math.max(W/6.32,H/3.6);proj.scale(S).translate([W/2,H/2]);svg.attr('viewBox',`0 0 ${W} ${H}`);
+function relayout(){W=innerWidth||W;H=innerHeight||H;S=Math.max(W/(2*Math.PI),H/3.6);proj.scale(S).translate([W/2,H/2]);svg.attr('viewBox',`0 0 ${W} ${H}`);zExt();
  paths.attr('d',f=>GP(f.geometry));lab.attr('x',f=>proj([f.properties.lon,f.properties.lat])[0]).attr('y',f=>proj([f.properties.lon,f.properties.lat])[1]);
  cl.each(function(){const p=proj([+this.dataset.lo,+this.dataset.la]);this.setAttribute('x',p[0]);this.setAttribute('y',p[1])});
  d3.select('#flatimg').remove();flatImagery();tiles2d(true)}  // a imagem de fundo acompanha a nova escala (antes ficava uma faixa azul vazia)
@@ -721,10 +723,14 @@ function tiles2d(force){if(force)tZ=-1;const t=d3.zoomTransform(svg.node()),Wp=2
   dpr=Math.min(devicePixelRatio||1,1.5),z=Math.max(1,Math.min(8,Math.ceil(Math.log2(Wp*t.k*dpr/256)))),n=2**z,ts=Wp/n,
   a=t.invert([0,0]),b=t.invert([W,H]),c0=Math.max(0,Math.floor((a[0]-x0)/ts)),c1=Math.min(n-1,Math.floor((b[0]-x0)/ts)),r0=Math.max(0,Math.floor((a[1]-y0)/ts)),r1=Math.min(n-1,Math.floor((b[1]-y0)/ts)),L=[];
  for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++)L.push({z,r,c,k:z+'/'+r+'/'+c});
- if(z!==tZ)tg.selectAll('image').filter(d=>d.z!==z).transition().delay(900).duration(0).remove();tZ=z;   // os antigos ficam até os novos chegarem
+ tZ=z;
+ const url=(d,n)=>`${GIBS}epsg3857/best/${GLY}/default/GoogleMapsCompatible_Level8/${d.z}/${d.r}/${d.c}.jpeg`+(n?`?r=${n}`:''),
+  limpa=()=>{if(tZ!==z)return;const novos=tg.selectAll('image.t'+z);if(novos.filter(function(){return !this.dataset.ok}).size()===0)tg.selectAll('image').filter(d=>d.z!==z).remove()};   // os antigos só saem quando os novos já chegaram todos
  tg.selectAll('image.t'+z).data(L,d=>d.k).join(en=>en.append('image').attr('class','t'+z).attr('preserveAspectRatio','none').style('opacity',0)
-   .attr('href',d=>`${GIBS}epsg3857/best/${GLY}/default/GoogleMapsCompatible_Level8/${d.z}/${d.r}/${d.c}.jpeg`).on('load',function(){d3.select(this).transition().duration(250).style('opacity',1)}))
-  .attr('x',d=>x0+d.c*ts).attr('y',d=>y0+d.r*ts).attr('width',ts+.5).attr('height',ts+.5)}
+   .attr('href',d=>url(d)).on('load',function(){this.dataset.ok=1;d3.select(this).raise().transition().duration(250).style('opacity',1);limpa()})
+   .on('error',function(e,d){const n=+(this.dataset.n||0)+1;this.dataset.n=n;if(n<=3)setTimeout(()=>this.setAttribute('href',url(d,n)),800*n);else{this.dataset.ok=1;limpa()}}))   // falhou: tenta outra vez (até 3 vezes)
+  .attr('x',d=>x0+d.c*ts).attr('y',d=>y0+d.r*ts).attr('width',ts+.5).attr('height',ts+.5);
+ setTimeout(()=>{if(tZ===z)tg.selectAll('image').filter(d=>d.z!==z).remove()},12000)}
 zoom.on('zoom.tiles',()=>{clearTimeout(tT);tT=setTimeout(tiles2d,90)});tiles2d();
 function glHiTex(){const z=(innerWidth<700||(navigator.deviceMemory||8)<4)?2:3,deg=288/2**z,cw=Math.round(360/deg*512),ch=Math.round(180/deg*512),nc=Math.ceil(360/deg),nr=Math.ceil(180/deg),
   c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d',{willReadFrequently:true});let n=0,falhas=0;
@@ -817,6 +823,20 @@ document.body.insertAdjacentHTML('beforeend',`<div class="win gl wide" id="w-v">
 let VTAB='var';
 $('#btnVar').onclick=()=>{const w=$('#w-v'),abrir=!w.classList.contains('on');openWin('v',abrir);if(abrir){if(!VAR1){VAR1=true;varLiga('agua')}else varPainel()}};
 $('#vX').onclick=()=>openWin('v',false);
+// botão no topo para mudar de variável: ◀ anterior · nome (abre o painel) · seguinte ▶ · ⟳ passa por todas sozinho
+// a barra de ferramentas começa sempre abaixo da barra de cima (que pode ter 1, 2 ou 3 linhas conforme a largura do ecrã)
+function dkTop(){const fs=[...document.querySelectorAll('.tb > *')].filter(e=>e.offsetParent);if(!fs.length)return;const b=Math.max(...fs.map(e=>e.getBoundingClientRect().bottom)),d=$('.dk');d.style.top=(b+12)+'px';d.style.maxHeight=`calc(100vh - ${b+30}px)`}
+addEventListener('resize',()=>setTimeout(dkTop,50));
+document.head.insertAdjacentHTML('beforeend','<style>@media(max-width:700px){#ttlSub{display:none}}#vsw button{white-space:nowrap}#vswN{min-width:190px}#vsw #vswN.on{background:var(--acc);color:#fff}@media(max-width:700px){#vswN{min-width:0;max-width:110px;overflow:hidden;text-overflow:ellipsis}#vswT{display:none}}</style>');
+$('#vis').insertAdjacentHTML('afterend',`<div class="gl vis" id="vsw" role="group" aria-label="Variável"><button id="vswA" aria-label="Variável anterior">◀</button><button id="vswN"></button><button id="vswB" aria-label="Variável seguinte">▶</button><button id="vswT"></button></div>`);
+let VCIC=0;
+function vswTxt(){const on=layer==='v'&&!!VAR;$('#vswN').textContent=on?vNome(VAR):L2('Variáveis da NASA','NASA variables');$('#vswN').classList.toggle('on',on);$('#vswT').textContent=VCIC?L2('■ Parar','■ Stop'):L2('⟳ Todas','⟳ All');$('#vswT').title=L2('Mostra todas as variáveis, uma a uma','Shows every variable, one by one');dkTop()}
+function vswPasso(d){const i=layer==='v'&&VAR?VD.indexOf(VAR):(d>0?-1:0),v=VD[(i+d+VD.length)%VD.length];VAR1=true;VTAB='var';window._vswMuda=true;try{varLiga(v.id)}finally{window._vswMuda=false}}
+function vswPara(){clearInterval(VCIC);VCIC=0;vswTxt()}
+$('#vswA').onclick=()=>{vswPara();vswPasso(-1)};$('#vswB').onclick=()=>{vswPara();vswPasso(1)};$('#vswN').onclick=()=>{if(layer!=='v'||!VAR)vswPasso(1);openWin('v',true);varPainel()};
+$('#vswT').onclick=()=>{if(VCIC){vswPara();return}vswPasso(1);VCIC=setInterval(()=>vswPasso(1),4500);vswTxt()};
+{const _vl=window.varLiga;window.varLiga=function(){const r=_vl.apply(this,arguments);vswTxt();return r}}
+{const _sl=window.setLayer;window.setLayer=function(l){const r=_sl.apply(this,arguments);if(l!=='v'&&VCIC&&!window._vswMuda)vswPara();vswTxt();return r}}
 function vBarra(v){return `<span style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--bd);margin-top:4px"><i style="width:${v.sobe}%;background:${VQUENTE.includes(v.id)?'#d7301f':'#018571'}"></i><i style="width:${v.desce}%;background:${VQUENTE.includes(v.id)?'#2166ac':'#a6611a'}"></i></span>`}
 const vDom=v=>v.dom==='terra'?L2('terra','land'):v.dom==='mar'?L2('oceano','ocean'):L2('mundo','world'),vTipo=v=>v.tipo==='modelo'?L2('modelo','model'):L2('satélite','satellite');
 function varPainel(){const p=$('#pv');if(!p)return;$('#vTit').textContent=L2('Variáveis da Terra','Earth variables');const v=VAR;
@@ -881,7 +901,7 @@ async function vCsvCelulas(v){if(!v)return;let j;try{j=await vFicheiro(v)}catch(
   L.push([la,lo,j.s[pos],j.lo[pos],j.hi[pos],j.q[pos],sigBit(v,i)?Math.sign(j.s[pos]):0,j.med[pos],...vSerieCel(j,pos).map(x=>x==null?null:+x.toFixed(4))])});
  vBaixa(`ecocell_${v.id}_celulas${bx?'_'+(lvl>=2?D.countries[curC].en:CN[cur].n).replace(/\W+/g,'_'):''}.csv`,L)}
 $('#btnLang').addEventListener('click',()=>setTimeout(()=>{if($('#w-v').classList.contains('on'))varPainel();if(layer==='v'&&VAR)$('#tipL').textContent=L2('Mapa: ','Map: ')+vNome(VAR);const t=$('#btnVar .tip');if(t)t.textContent=L2('Variáveis da Terra','Earth variables');vSub()},80));
-function vSub(){const s=$('#ttlSub');if(s)s.textContent=L2('O que muda na Terra, onde, quanto e se é significativo, com dados da NASA','What changes on Earth, where, how much and whether it is significant, with NASA data');if(VANIM.on&&VAR){$('#vyNome').textContent=vNome(VAR)}}
+function vSub(){const s=$('#ttlSub');if(s)s.textContent=L2('O que muda na Terra, onde, quanto e se é significativo, com dados da NASA','What changes on Earth, where, how much and whether it is significant, with NASA data');if(VANIM.on&&VAR){$('#vyNome').textContent=vNome(VAR);const q=VQUENTE.includes(VAR.id);$('#vyLeg').textContent=L2(q?'vermelho: acima da média · azul: abaixo':'verde-azulado: acima da média · castanho: abaixo',q?'red: above average · blue: below':'teal: above average · brown: below')}vswTxt()}
 // foco: as Variáveis da Terra são a entrada principal; na primeira visita o painel abre sozinho (a EcoCell do metano é um exemplo de aplicação)
 document.head.insertAdjacentHTML('beforeend','<style>#btnVar{box-shadow:0 0 0 2px #2a9d8f}#btnVar.pulsa{animation:vPulsa 1.6s ease-out 4}@keyframes vPulsa{0%{box-shadow:0 0 0 2px #2a9d8f,0 0 0 0 rgba(42,157,143,.6)}100%{box-shadow:0 0 0 2px #2a9d8f,0 0 0 14px rgba(42,157,143,0)}}</style>');
 setTimeout(()=>{vSub();$('#btnVar').classList.add('pulsa');let novo=true;try{novo=!localStorage.getItem('ecocell-var-visto');localStorage.setItem('ecocell-var-visto','1')}catch(e){}
