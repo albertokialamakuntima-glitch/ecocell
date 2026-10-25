@@ -36,7 +36,7 @@ def fix(s):
             out+=[x for x in (r.geoms if hasattr(r,'geoms') else [r]) if x.geom_type=='Polygon' and x.area>0]
     return MultiPolygon(out)
 AIRS_FILE=os.environ.get('AIRS_FILE','airs_trends.json')
-g=json.load(open('world.json')); feats=[f for f in g['features'] if f['properties']['name']!='Antarctica']
+g=json.load(open('world.json',encoding='utf-8')); feats=[f for f in g['features'] if f['properties']['name']!='Antarctica']
 shp=[fix(shape(f['geometry'])) for f in feats]; names=[f['properties']['name'] for f in feats]
 # continentes
 CONT=[('África',[-18,-35,52,38],8),('Europa',[-25,34,45,72],3),('Ásia',[25,-11,180,78],30),('América do Norte',[-170,7,-50,83],30),('América do Sul',[-92,-56,-34,13],10),('Oceânia',[110,-48,180,-1],20)]
@@ -152,12 +152,12 @@ if os.path.exists('gpm_trends.json'):
 data={'cells':cells,'countries':cs,'geo':{'type':'FeatureCollection','features':gf},'top':top,'thr':[round(q1,1),round(q2,1)],
       'conts':[{'n':n,'b':b,'lt':lt} for n,b,lt in CONT],'airs':AIRS,'airsC':AC if AIRS else {},'airsK':AK if AIRS else [],'ptmap':{v:k for k,v in PT.items()},'noaa':(json.load(open('noaa_vs_airs.json',encoding='utf-8')) if os.path.exists('noaa_vs_airs.json') else None),'gpm':GP,'meta':dict(built=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).strftime('%Y-%m-%d %H:%M'),end=(META['end'] if 'META' in globals() else None)),'gpmT':(json.load(open('gpm_tempo.json')) if os.path.exists('gpm_tempo.json') else None),'valid':VAL,'per':(json.load(open('periodos.json',encoding='utf-8')) if os.path.exists('periodos.json') else None)}
 json.dump({n:CONT[K[i]][0] for i,n in enumerate(names)},open('continentes.json','w',encoding='utf-8'),ensure_ascii=False)
-h=open('template.html').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
+h=open('template.html',encoding='utf-8').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
 _OUT='index.html'
-open(_OUT,'w').write(h)
+open(_OUT,'w',encoding='utf-8').write(h)
 _dir=os.path.dirname(os.path.abspath(_OUT))
 _v=D_built if 'D_built' in globals() else __import__('datetime').datetime.now().strftime('%Y%m%d%H%M')
-open(os.path.join(_dir,'sw.js'),'w').write("const C='ecocell-"+_v+"';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png']).catch(()=>{})).then(()=>self.skipWaiting()))});self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r}).catch(()=>caches.match(e.request).then(m=>m||caches.match('index.html'))))});")
+open(os.path.join(_dir,'sw.js'),'w').write("const C='ecocell-"+_v+"';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png']).catch(()=>{})).then(()=>self.skipWaiting()))});self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||new URL(e.request.url).origin!==location.origin)return;e.respondWith(fetch(e.request).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r}).catch(()=>caches.match(e.request).then(m=>m||caches.match('index.html'))))});")
 json.dump({'name':'EcoCell Earth Intelligence','short_name':'EcoCell','start_url':'./','scope':'./','display':'standalone','background_color':'#5fd0e6','theme_color':'#5fd0e6','icons':[{'src':'icon-192.png','sizes':'192x192','type':'image/png'},{'src':'icon-512.png','sizes':'512x512','type':'image/png'}]},open(os.path.join(_dir,'manifest.webmanifest'),'w'))
 try:
     import base64,io,re as _re

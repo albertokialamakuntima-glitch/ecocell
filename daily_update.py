@@ -10,10 +10,12 @@ for _m, _p in (("ee", "earthengine-api"), ("numpy", "numpy"), ("pandas", "pandas
     _garantir(_m, _p)
 # --- fim do arranque ---
 """Atualiza cells.csv com o CH4 mais recente do Sentinel-5P (Google Earth Engine).
+Tendência: regressão harmónica (constante + tendência + seno + cosseno anuais) sobre médias MENSAIS
+de anos completos, para o ciclo sazonal não se misturar com a tendência.
 O cálculo pesado corre como TAREFAS em segundo plano (exportação para assets do Earth Engine),
 sem limite de 5 minutos. Depois só se descarregam os resultados já calculados.
 Credenciais: EE_SERVICE_ACCOUNT_JSON e EE_PROJECT (GitHub Actions) ou o teu login local."""
-import ee, os, io, json, time, urllib.request
+import ee, os, io, json, math, time, urllib.request
 import pandas as pd
 from datetime import date, timedelta
 
@@ -26,17 +28,25 @@ else:
 
 # --- controlo de carga: o Earth Engine tem uma quota mensal gratuita; ao exceder entra em modo restrito (fila lenta) ---
 FORCAR = os.environ.get("GITHUB_EVENT_NAME") in (None, "", "workflow_dispatch")      # execução manual: ignora os intervalos
-DIAS_ENTRE_ATUALIZACOES = int(os.environ.get("EE_DIAS_ATUALIZACAO", 7))   # o Sentinel-5P muda pouco de um dia para o outro
 DIAS_ENTRE_TENTATIVAS = int(os.environ.get("EE_DIAS_TENTATIVA", 3))       # se falhar, espera antes de tentar de novo
 ESPERA_MAX_MIN = float(os.environ.get("EE_ESPERA_MAX_MIN", 70))           # o workflow tem limite de 90 minutos
 SEM_ARRANQUE_MIN = float(os.environ.get("EE_SEM_ARRANQUE_MIN", 15))       # se nenhuma tarefa arrancar neste tempo, desiste
 PAUSA_S = float(os.environ.get("EE_PAUSA_S", 60))
+ANOS = int(os.environ.get("EE_ANOS_TENDENCIA", 3))                        # janela da tendência, em anos completos
+MIN_FRAC = float(os.environ.get("EE_MIN_FRAC_MESES", 0.6))                # fração mínima de meses com dados por pixel
+RECENTES = 2                                                              # meses do indicador "recente"
 
 def _ler(p):
     try: return json.load(open(p, encoding="utf-8"))
     except Exception: return None
 def _aviso(msg): print(f"::warning::{msg}", flush=True)
 hoje = date.today()
+# janela: ANOS x 12 meses completos; o último mês tem de estar fechado (o produto OFFL chega com alguns dias de atraso)
+FIM_M = date(hoje.year, hoje.month, 1)                                    # exclusivo
+if hoje.day < 10: FIM_M = (FIM_M - timedelta(days=1)).replace(day=1)
+INI_M = date(FIM_M.year - ANOS, FIM_M.month, 1); N_MESES = 12 * ANOS
+START, END = INI_M, FIM_M - timedelta(days=1)                             # END = último dia incluído
+METODO = f"harmonica_{ANOS}anos"
 def _fim(res): json.dump({"ultima_tentativa": str(hoje), "resultado": res}, open("estado_ee.json", "w"))
 def _cancelar_pendentes():
     """Cancela as tarefas deste programa (descrição t_...) que ainda estejam na fila ou a correr."""
@@ -53,21 +63,37 @@ def _cancelar_pendentes():
 print("tarefas antigas canceladas:", _cancelar_pendentes(), flush=True)
 _meta, _est = _ler("meta.json"), _ler("estado_ee.json")
 if not FORCAR:
-    if _meta and (hoje - date.fromisoformat(_meta["end"])).days < DIAS_ENTRE_ATUALIZACOES:
-        print(f"Dados com menos de {DIAS_ENTRE_ATUALIZACOES} dias (até {_meta['end']}): nada a fazer."); sys.exit(0)
+    if _meta and _meta.get("end") == str(END) and _meta.get("metodo") == METODO and _meta.get("completo"):
+        print(f"A janela {START} a {END} já está calculada (só muda quando fechar o próximo mês): nada a fazer."); sys.exit(0)
     if _est and (hoje - date.fromisoformat(_est["ultima_tentativa"])).days < DIAS_ENTRE_TENTATIVAS:
         print(f"Última tentativa em {_est['ultima_tentativa']} ({_est.get('resultado', '?')}): a aguardar."); sys.exit(0)
 _fim("em curso")
 
 
-END = date.today(); START = END - timedelta(days=540); RECENT = END - timedelta(days=60)
+print(f"Janela: {START} a {END} ({N_MESES} meses, {METODO})", flush=True)
 BAND = "CH4_column_volume_mixing_ratio_dry_air"
 col = ee.ImageCollection("COPERNICUS/S5P/OFFL/L3_CH4").select(BAND)
-base = col.filterDate(str(START), str(END))
-t0 = ee.Date(str(START))
-fit = base.map(lambda i: i.addBands(ee.Image(i.date().difference(t0, "day")).float().rename("t"))).select(["t", BAND]).reduce(ee.Reducer.linearFit())
-stack = (base.mean().rename("mean").addBands(fit.select("scale").rename("slope"))
-         .addBands(col.filterDate(str(RECENT), str(END)).mean().rename("recent")))
+VAZIA = ee.ImageCollection([ee.Image.constant(0).float().rename(BAND).updateMask(0)])   # evita imagem sem bandas num mês sem dados
+T0 = ee.Date(str(INI_M))
+def mes_img(i):
+    d0 = T0.advance(ee.Number(i), "month")
+    y = col.filterDate(d0, d0.advance(1, "month")).merge(VAZIA).mean().rename("y")
+    t = ee.Image.constant(d0.advance(15, "day").difference(T0, "year")).float().rename("t")   # anos desde o início
+    w = t.multiply(2 * math.pi)
+    return ee.Image.cat([ee.Image.constant(1).rename("c"), t, w.sin().rename("s"), w.cos().rename("co"), y]).updateMask(y.mask())
+mensais = ee.ImageCollection.fromImages(ee.List.sequence(0, N_MESES - 1).map(mes_img))
+coef = (mensais.reduce(ee.Reducer.linearRegression(4, 1)).select("coefficients")
+        .arrayProject([0]).arrayFlatten([["c", "t", "s", "co"]]))                       # y = c + t·ano + s·sin + co·cos
+def residuo(img):                                                                        # observado - (tendência + estação)
+    img = ee.Image(img)
+    return img.select("y").subtract(img.select(["c", "t", "s", "co"]).multiply(coef).reduce(ee.Reducer.sum())).rename("r")
+media = mensais.select("y").mean()                                                       # anos completos: a estação equilibra-se
+recente = ee.ImageCollection(mensais.toList(RECENTES, N_MESES - RECENTES).map(residuo)).mean()
+valido = mensais.select("y").count().gte(math.ceil(MIN_FRAC * N_MESES))
+# slope em ppb/DIA, como antes: o build_site.py multiplica-o pelos dias da janela (meta.json) para obter a variação em %.
+# recent = média + anomalia recente sem sazonalidade, para o build_site.py continuar a usar recent - mean.
+stack = (media.rename("mean").addBands(coef.select("t").divide(365.25).rename("slope"))
+         .addBands(media.add(recente).rename("recent")).updateMask(valido))
 
 ROOT = f"projects/{PROJECT}/assets/ecocell"
 try: ee.data.getAsset(ROOT)
@@ -88,7 +114,7 @@ for w, s, n in jobs:
     name = f"t_{w}_{s}".replace("-", "m"); aid = f"{ROOT}/{name}"
     try: ee.data.deleteAsset(aid)
     except Exception: pass
-    res = stack.reduceRegions(grid(w, w + W, s, n), ee.Reducer.mean(), scale=7000, tileScale=4).filter(ee.Filter.notNull(["mean", "slope"]))
+    res = stack.reduceRegions(grid(w, w + W, s, n), ee.Reducer.mean(), scale=7000, tileScale=8).filter(ee.Filter.notNull(["mean", "slope"]))
     t = ee.batch.Export.table.toAsset(collection=res, description=name, assetId=aid)
     t.start(); tasks.append((w, s, n, aid, t)); print("enviada", name, flush=True)
 
@@ -124,5 +150,5 @@ print(f"{ok}/{len(tasks)} blocos atualizados")
 if ok == 0 or len(df) < 20000:
     _aviso("Nenhum bloco foi atualizado: a manter os dados anteriores."); _fim("sem blocos atualizados"); sys.exit(0)
 df.drop_duplicates(["lat", "lon"]).round(5).to_csv("cells.csv", index=False)
-json.dump({"start": str(START), "end": str(END), "blocos_ok": f"{ok}/{len(tasks)}"}, open("meta.json", "w"))
+json.dump({"start": str(START), "end": str(END), "blocos_ok": f"{ok}/{len(tasks)}", "completo": ok == len(tasks), "metodo": METODO}, open("meta.json", "w"))
 _fim("ok"); print("ok", len(df), "células", START, END)
