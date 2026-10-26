@@ -666,6 +666,10 @@ function glDraw(q){const cw=innerWidth,ch=innerHeight,dpr=Math.min(devicePixelRa
    const cs=C.filter(c=>c.ci===curC),cl=['--lo','--me','--hi'].map(v=>css.getPropertyValue(v).trim());[0,1,2].forEach(l=>{x.beginPath();cs.forEach(c=>{if(c.lv===l)P(glBox(c))});x.globalAlpha=.62;x.fillStyle=cl[l];x.fill();x.globalAlpha=1;x.strokeStyle='rgba(0,0,0,.35)';x.lineWidth=.4;x.stroke()});
    x.beginPath();P(f);x.strokeStyle='#fff';x.lineWidth=1.8;x.stroke();
    if(lvl===3&&GL.cell){x.beginPath();P(glBox(GL.cell));x.strokeStyle='#fff';x.lineWidth=2.2;x.stroke()}}}
+ if(lvl>=2&&curC>=0&&layer==='v'&&typeof VPB!=='undefined'&&VPB&&VPB.i===curC&&VPB.v===VAR&&!VANIM.on){const f=GF.get(curC);   // blocos da variável no país (as mesmas zonas do mapa 2D)
+  [0,1,2,3,4].forEach(z=>{x.beginPath();VPB.L.forEach(b=>{if(b.z===z)P(glBox({lat:89.5-b.r,lon:b.c-179.5}))});x.globalAlpha=.85;x.fillStyle=vZcor(VAR,z);x.fill();x.globalAlpha=1;x.strokeStyle='rgba(255,255,255,.55)';x.lineWidth=.6;x.stroke()});
+  if(f){x.beginPath();P(f);x.strokeStyle='#fff';x.lineWidth=1.8;x.stroke()}
+  if(GL.vcel){x.beginPath();P(glBox(GL.vcel));x.strokeStyle='#fff';x.lineWidth=2.6;x.stroke()}}
  // nomes: continentes no mundo; países do continente ao abrir um continente; país escolhido + vizinhos ao abrir um país.
  // Só a face visível do globo, sem nomes sobrepostos (os países maiores têm prioridade) e sem rotular países demasiado pequenos no ecrã.
  x.textAlign='center';x.textBaseline='middle';const caixas=[],C0=[GL.lon,GL.lat];
@@ -692,7 +696,10 @@ function ringIn(r,x,y){let c=false;for(let i=0,j=r.length-1;i<r.length;j=i++){co
 function polyIn(p,x,y){if(!ringIn(p[0],x,y))return false;for(let k=1;k<p.length;k++)if(ringIn(p[k],x,y))return false;return true}
 function featAt(ll){return D.geo.features.find(f=>{const b=D.countries[f.properties.i]&&D.countries[f.properties.i].b;if(b&&(ll[0]<b[0]||ll[0]>b[2]||ll[1]<b[1]||ll[1]>b[3]))return false;const g=f.geometry;return g.type==='Polygon'?polyIn(g.coordinates,ll[0],ll[1]):g.type==='MultiPolygon'?g.coordinates.some(p=>polyIn(p,ll[0],ll[1])):false})}
 function glClick(px,py){glp.rotate([-GL.lon,-GL.lat]).scale(glR()).translate([glCx(),glCy()]);const ll=glp.invert([px,py]);if(!ll||isNaN(ll[0])||Math.hypot(px-glCx(),py-glCy())>glR())return;
- if(layer==='v'&&typeof VAR!=='undefined'&&VAR){varCelula(ll[1],ll[0]);return}   // variável escolhida: mostra a série da célula
+ if(layer==='v'&&typeof VAR!=='undefined'&&VAR){const f=featAt(ll);   // variável escolhida: continente -> países -> blocos -> informação do bloco (como no metano)
+  if(lvl>=2&&curC>=0&&((f&&f.properties.i===curC)||(!f&&VAR.dom==='mar'))){GL.vcel={lat:Math.floor(ll[1])+.5,lon:Math.floor(ll[0])+.5};GL.hq=false;varCelula(ll[1],ll[0]);return}
+  if(!f){if(lvl===0){varCelula(ll[1],ll[0]);return}glZoom(ll[0],ll[1],1.6);return}
+  const i=f.properties.i;if(cmpOn){pickCmp(i);return}GL.vcel=null;lvl===0?cont(D.countries[i].k):go(i);return}
  if(lvl>=2){const c=GCM.get(Math.round(ll[1])+'|'+(Math.floor(ll[0])+.5));if(c&&c.ci===curC){show(c);return}}
  const f=featAt(ll);if(!f||!has(f.properties.i)){glZoom(ll[0],ll[1],2.2);if(f)other(D.countries[f.properties.i].n);return}  // mar ou país sem dados: amplia nesse ponto
  const i=f.properties.i,c=D.countries[i];if(cmpOn){pickCmp(i);return}lvl===0?cont(c.k):go(i)}
@@ -796,7 +803,7 @@ svg.node().addEventListener('click',e=>{if(layer!=='v'||!VAR)return;const d=e.ta
  if(e.target.classList.contains('vb')){e.stopPropagation();varCelula(89.5-d.r,d.c-179.5);vcg.selectAll('path').classed('sel',x=>x===d);return}   // bloco do país: série da célula
  if(d&&d.properties&&d.properties.i!=null&&!(lvl>=2&&d.properties.i===curC))return;   // clique num país: entra no continente / no país, como no metano
  e.stopPropagation();const ll=proj.invert(d3.zoomTransform(svg.node()).invert(d3.pointer(e,svg.node())));if(ll)varCelula(ll[1],ll[0])},true);
-async function vFicheiro(v){if(!VFICH[v.id])VFICH[v.id]=fetch(`vars/${v.id}.json`).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{const n=j.anos.length,q=new Int16Array(b64u8(j.serie).buffer);j.n=n;j.Q=q;return j});
+async function vFicheiro(v){if(!VFICH[v.id])VFICH[v.id]=fetch(`vars/${v.id}.json`).then(r=>r.ok?r:fetch(`${v.id}.json`)).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})   /* procura em vars/ e, se não estiver lá, na pasta principal */.then(j=>{const n=j.anos.length,q=new Int16Array(b64u8(j.serie).buffer);j.n=n;j.Q=q;return j});
  try{return await VFICH[v.id]}catch(e){delete VFICH[v.id];throw e}}
 function vSerieCel(j,pos){const out=[];for(let k=0;k<j.n;k++){const q=j.Q[pos*j.n+k];out.push(q===-32768?null:j.med[pos]+q*j.prec)}return out}
 const vVal=(v,x)=>x==null?null:v.id==='clor'?Math.pow(10,x):x,vUn=v=>v.un;
@@ -815,7 +822,7 @@ async function varCelula(lat,lon){const v=VAR;if(!v)return;const r=Math.floor(90
  $('#info').innerHTML=tit+`<p class="mut">${L2('A carregar a série anual…','Loading the annual series…')}</p>`;
  try{const j=await vFicheiro(v);let a=0,b=j.cel.length-1,pos=-1;while(a<=b){const m=(a+b)>>1;if(j.cel[m]===i){pos=m;break}j.cel[m]<i?a=m+1:b=m-1}
   if(pos<0)throw new Error('cel');const sig=sigBit(v,i),s=j.s[pos],ser=vSerieCel(j,pos),f=featAt([lon,lat]),pn=f&&D.countries[f.properties.i],pv=pn&&v.paises[pn.en];
-  $('#info').innerHTML=tit+`<p>${sig?`<span class="badge" style="background:${s>0?'#b2182b':'#2166ac'}">${s>0?L2('sobe','rises'):L2('desce','falls')}: ${L2('significativo','significant')}</span>`:`<span class="badge" style="background:#7a7f86">${L2('sem tendência significativa','no significant trend')}</span>`}</p>
+  $('#info').innerHTML=tit+`<p>${sig?`<span class="badge" style="background:${s>0?'#b2182b':'#2166ac'}">${s>0?L2('sobe','rises'):L2('desce','falls')}: ${L2('significativo','significant')}</span>`:`<span class="badge" style="background:#7a7f86">${L2('sem tendência significativa','no significant trend')}</span>`} &nbsp;${L2('Zona','Zone')}: <b><i style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${vZcor(v,vZona(v,i))};vertical-align:-1px"></i> ${VZ[vZona(v,i)][LANG]||VZ[vZona(v,i)].pt}</b>${pn?` · ${pn.n}`:''}</p>
   <table><tr><td>${L2('Média','Mean')} (${j.anos[0]}–${j.anos[j.anos.length-1]})</td><td><b>${fmtA(vVal(v,j.med[pos])??0,v.id==='clor'?2:2)} ${vUn(v)}</b></td></tr>
   <tr><td>${L2('Quanto muda','How much it changes')}</td><td><b>${fmtN(s,3)} ${vTr(v)}</b></td></tr><tr><td>${L2('Intervalo de confiança 95 %','95% confidence interval')}</td><td>${fmtN(j.lo[pos],3)} ${L2('a','to')} ${fmtN(j.hi[pos],3)}</td></tr>
   <tr><td>q (FDR)</td><td>${j.q[pos]<.001?'< 0,001':fmtA(j.q[pos],3)}</td></tr></table>${vGrafico(v,j.anos,ser)}
@@ -827,14 +834,15 @@ const vcg=g.insert('g',()=>cg.node().nextSibling).attr('id','vcg');
 const VZ=[{pt:'Desce muito',en:'Falls strongly'},{pt:'Desce',en:'Falls'},{pt:'Sem mudança significativa',en:'No significant change'},{pt:'Sobe',en:'Rises'},{pt:'Sobe muito',en:'Rises strongly'}],
  vZona=(v,i)=>{const r=v.R[i];return !sigBit(v,i)?2:r>=60?4:r>0?3:r<=-60?0:1},
  vZcor=(v,z)=>z===2?'rgb(154,163,168)':'rgb('+vCor(v,[-.9,-.4,0,.4,.9][z],true).slice(0,3).join(',')+')';
-function vLimpa(){vcg.selectAll('path').remove();d3.select('#varimg').style('opacity',null)}
+let VPB=null;   // blocos do país atual (também desenhados no globo 3D)
+function vLimpa(){vcg.selectAll('path').remove();d3.select('#varimg').style('opacity',null);VPB=null;GL.vcel=null;GL.hq=false}
 function vCelulasPais(v,i){const f=D.geo.features.find(x=>x.properties.i===i),b=D.countries[i].b;if(!f)return [];
  const dentro=(lo,la)=>{const g=f.geometry;return g.type==='Polygon'?polyIn(g.coordinates,lo,la):g.type==='MultiPolygon'?g.coordinates.some(p=>polyIn(p,lo,la)):false},
   mar=v.dom==='mar',m=mar?3:0,r0=Math.max(0,Math.floor(90-b[3]-m)),r1=Math.min(179,Math.floor(90-b[1]+m)),c0=Math.max(0,Math.floor(b[0]+180-m)),c1=Math.min(359,Math.floor(b[2]+180+m)),L=[],caixa=[];
  for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){const k=r*360+c;if(v.R[k]===-128)continue;const lo=c-179.5,la=89.5-r;caixa.push({r,c,k});
   if(mar?!featAt([lo,la]):dentro(lo,la))L.push({r,c,k})}
  return L.length||mar?L:caixa.filter(x=>Math.abs(x.c-179.5-(b[0]+b[2])/2)<=1.5&&Math.abs(89.5-x.r-(b[1]+b[3])/2)<=1.5)}   // país pequeno: as células à volta do centro
-function vPais(i){vLimpa();if(layer!=='v'||!VAR||lvl<2||VANIM.on)return;const v=VAR,L=vCelulasPais(v,i);L.forEach(x=>x.z=vZona(v,x.k));
+function vPais(i){vLimpa();if(layer!=='v'||!VAR||lvl<2||VANIM.on)return;const v=VAR,L=vCelulasPais(v,i);L.forEach(x=>x.z=vZona(v,x.k));VPB={i,v,L};GL.hq=false;
  d3.select('#varimg').style('opacity',.35);
  const rect=x=>{const a=proj([x.c-180,90-x.r]),b=proj([x.c-179,89-x.r]);return `M${a[0]},${a[1]}H${b[0]}V${b[1]}H${a[0]}Z`};
  vcg.selectAll('path').data(L).join('path').attr('class','k vb').attr('d',rect).style('fill',x=>vZcor(v,x.z)).style('fill-opacity',.85)
