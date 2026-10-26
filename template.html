@@ -700,7 +700,7 @@ function glClick(px,py){glp.rotate([-GL.lon,-GL.lat]).scale(glR()).translate([gl
   if(lvl>=2&&curC>=0&&((f&&f.properties.i===curC)||(!f&&VAR.dom==='mar'))){GL.vcel={lat:Math.floor(ll[1])+.5,lon:Math.floor(ll[0])+.5};GL.hq=false;varCelula(ll[1],ll[0]);return}
   if(!f){if(lvl===0){varCelula(ll[1],ll[0]);return}glZoom(ll[0],ll[1],1.6);return}
   const i=f.properties.i;if(cmpOn){pickCmp(i);return}GL.vcel=null;lvl===0?cont(D.countries[i].k):go(i);return}
- if(lvl>=2){const c=GCM.get(Math.round(ll[1])+'|'+(Math.floor(ll[0])+.5));if(c&&c.ci===curC){show(c);return}}
+ if(lvl>=2){const lo=Math.floor(ll[0])+.5,c=GCM.get((Math.floor(ll[1])+.5)+'|'+lo)||GCM.get(Math.round(ll[1])+'|'+lo);if(c&&c.ci===curC){show(c);return}}   // blocos com centro em .5° (AIRS) ou em grau inteiro
  const f=featAt(ll);if(!f||!has(f.properties.i)){glZoom(ll[0],ll[1],2.2);if(f)other(D.countries[f.properties.i].n);return}  // mar ou país sem dados: amplia nesse ponto
  const i=f.properties.i,c=D.countries[i];if(cmpOn){pickCmp(i);return}lvl===0?cont(c.k):go(i)}
 function glZoom(lo,la,f){GL.idle=performance.now();GL.tl=lo;GL.tla=Math.max(-80,Math.min(80,la));GL.tk=Math.max(.7,Math.min(16,GL.k*f));GL.hq=false}
