@@ -168,7 +168,7 @@ svg.call(zoom).on('dblclick.zoom',null);
 function zExt(){const a=proj([-180,85.0511287798]),b=proj([180,-85.0511287798]);zoom.translateExtent([[a[0],Math.min(a[1],0)],[b[0],Math.max(b[1],H)]])}zExt();
 svg.on('click',e=>{if(e.target!==svg.node())return;const ll=proj.invert(d3.zoomTransform(svg.node()).invert(d3.pointer(e,svg.node())));
  $('#info').innerHTML=`<h2>Mar aberto</h2><p class="mut">${ll[1].toFixed(2)}°, ${ll[0].toFixed(2)}°</p><p><b>Sem informações de metano neste ponto.</b></p><p class="mut">Só há células em terra e junto à costa. Clica num país para ver os dados.</p>`});
-function tf(k,cx,cy){svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity.translate(W/2-k*cx,H/2-k*cy).scale(k))}
+function tf(k,cx,cy){const t=zoom.constrain()(d3.zoomIdentity.translate(W/2-k*cx,H/2-k*cy).scale(k),[[0,0],[W,H]],zoom.translateExtent());svg.transition().duration(700).call(zoom.transform,t)}   // nunca mostra o fundo para lá das bordas do mundo
 function other(n){$('#info').innerHTML=`<h2>${n}</h2><p><b>Sem informações no momento.</b></p><p class="mut">Este país ainda não tem dados de metano processados.</p>`}
 function distHTML(cells,mark,titulo,marcador){if(!cells.length)return '';const v=cells.map(c=>c.an).sort((a,b)=>a-b),lo=d3.quantile(v,.01),hi=d3.quantile(v,.99),nb=18,w=330,h=120,p=8,bw=(w-2*p)/nb,bins=new Array(nb).fill(0),T=D.thr,f=x=>(x>=0?'+':'')+x.toFixed(1).replace('.',',');
  v.forEach(x=>{bins[Math.max(0,Math.min(nb-1,Math.floor((x-lo)/(hi-lo||1)*nb)))]++});const mx=d3.max(bins)||1,X=x=>p+Math.max(0,Math.min(1,(x-lo)/(hi-lo||1)))*(w-2*p),col=k=>{const c=lo+(k+.5)*(hi-lo)/nb;return c<=T[0]?'var(--lo)':c<=T[1]?'var(--me)':'var(--hi)'};
