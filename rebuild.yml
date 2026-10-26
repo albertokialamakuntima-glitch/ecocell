@@ -5,8 +5,14 @@ on:
     paths:
       - "template.html"
       - "build_site.py"
+      - "variaveis.json"
+      - "cells.csv"
+      - "meta.json"
 permissions:
   contents: write
+concurrency:            # nunca corre ao mesmo tempo que a atualização diária (esperam em fila)
+  group: ecocell-site
+  cancel-in-progress: false
 jobs:
   rebuild:
     runs-on: ubuntu-latest
@@ -16,11 +22,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Instalar dependências (lista explícita)
+      - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
           python -m pip install numpy pandas "shapely>=2" pycountry pycountry-convert pillow
-          python -c "import numpy, pandas, shapely, pycountry, pycountry_convert, PIL; print('shapely', shapely.__version__)"
       - name: Reconstruir o site
         run: python build_site.py
       - name: Guardar as alterações
@@ -29,4 +34,11 @@ jobs:
           git config user.email "actions@github.com"
           git add -A
           git commit -m "site reconstruído $(date -u +%F)" || exit 0
-          git push
+          # se entretanto alguém enviou ficheiros, junta-os primeiro e tenta outra vez (até 5 vezes)
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            echo "O repositório mudou entretanto: a juntar as alterações (tentativa $i)..."
+            sleep $((i * 5))
+            git pull --rebase -X theirs origin main || { git rebase --abort; exit 1; }
+          done
+          exit 1

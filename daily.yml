@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:            # nunca corre ao mesmo tempo que a reconstrução do site (esperam em fila)
+  group: ecocell-site
+  cancel-in-progress: false
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -37,4 +40,11 @@ jobs:
           git config user.email "actions@github.com"
           git add -A
           git commit -m "dados NASA $(date -u +%F)" || exit 0
-          git push
+          # se entretanto alguém enviou ficheiros, junta-os primeiro e tenta outra vez (até 5 vezes)
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            echo "O repositório mudou entretanto: a juntar as alterações (tentativa $i)..."
+            sleep $((i * 5))
+            git pull --rebase -X theirs origin main || { git rebase --abort; exit 1; }
+          done
+          exit 1
