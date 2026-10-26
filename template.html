@@ -150,7 +150,7 @@ $('#lg').onclick=e=>{const s=e.target.closest('[data-k]');if(s)cont(+s.dataset.k
 const paths=g.insert('g',':first-child').selectAll('path').data(D.geo.features).join('path')
  .attr('class',f=>'c'+(has(f.properties.i)?'':' o')).attr('d',f=>GP(f.geometry))
  .style('fill',fillOf)
- .on('click',(e,f)=>{const i=f.properties.i,c=D.countries[i];if(cmpOn){pickCmp(i);return}if(!has(i))return other(c.n);lvl===0?cont(c.k):go(i)});
+ .on('click',(e,f)=>{const i=f.properties.i,c=D.countries[i];if(cmpOn){pickCmp(i);return}if(!has(i)&&layer!=='v')return other(c.n);lvl===0?cont(c.k):go(i)});
 paths.append('title').text(f=>D.countries[f.properties.i].n+(has(f.properties.i)?'':' — sem informações'));
 const lab=lg.selectAll('text').data(D.geo.features.filter(f=>has(f.properties.i))).join('text').text(f=>D.countries[f.properties.i].n)
  .attr('x',f=>proj([f.properties.lon,f.properties.lat])[0]).attr('y',f=>proj([f.properties.lon,f.properties.lat])[1])
@@ -274,7 +274,8 @@ if(D.gpm)rg.selectAll('path').data(D.gpm.cells).join('path').attr('d',c=>cp({lat
  .append('title').text(c=>`${c[2]>0?'+':''}${c[2]}% por década (${c[3]} mm/ano)`);
 const ry=g.insert('g',()=>cg.node()).attr('display','none').attr('pointer-events','none');let yAnim=null,yK=0;
 function setLayer(l){layer=l;$('#tipL').textContent={n:'Mapa: natural',t:'Mapa: tendência (indicativo)',c:'Mapa: chuva (GPM)',y:'Mapa: chuva ano a ano'}[l];paths.style('fill',fillOf);rg.attr('display',l==='c'?null:'none').attr('pointer-events',l==='c'?'all':'none');ry.attr('display',l==='y'?null:'none').attr('pointer-events',l==='y'?'all':'none');$('#yr').hidden=l!=='y';if(l!=='y')yStop();else yDraw();if(l==='t')openWin('t',true);if(l==='c')openWin('r',true)}
-$('#btnL').onclick=()=>setLayer(layer==='n'?'t':layer==='t'?'c':layer==='c'&&D.gpmT?'y':'n');
+function lyCiclo(){setLayer(layer==='n'?'t':layer==='t'?'c':layer==='c'&&D.gpmT?'y':'n')}
+$('#btnL').onclick=e=>{e.stopPropagation();lyMenu()};   // abre o menu de camadas (mapa natural, metano, chuva e as 10 variáveis da NASA)
 function gpmChart(S,y0){const w=330,h=120,p=28,n=S.s.length,lo=d3.min(S.s),hi=d3.max(S.s),X=k=>p+k/(n-1)*(w-p-6),Y=v=>h-18-(v-lo)/(hi-lo||1)*(h-30),mx=(n-1)/2;
  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto"><polyline fill="none" stroke="#2a7fb8" stroke-width="2" points="${S.s.map((v,k)=>X(k)+','+Y(v)).join(' ')}"/>
  <line x1="${X(0)}" x2="${X(n-1)}" y1="${Y(S.m-S.sl*mx)}" y2="${Y(S.m+S.sl*mx)}" stroke="#d2452f" stroke-width="2" stroke-dasharray="5 3"/>
@@ -776,20 +777,25 @@ function vAnimCanvas(v,j,k){const key=v.id+'|'+k;if(VANIM.can[key])return VANIM.
  x.putImageData(im,0,0);return VANIM.can[key]=c}
 function vAnimQuadro(k){const j=VANIM.j;if(!j)return;VANIM.k=(k+j.n)%j.n;vAnimCanvas(VAR,j,VANIM.k);$('#vyR').value=VANIM.k;$('#vyL').textContent=j.anos[VANIM.k];VOVER++;GL.hq=false;if(!GL.on)vDesenha2D()}
 function vAnimPara(){clearInterval(VANIM.ti);VANIM.ti=0;const p=$('#vyP');if(p)p.textContent='▶'}
-async function vAnimLiga(on){if(!on||!VAR){vAnimPara();VANIM.on=false;VANIM.j=null;$('#vyr').hidden=true;VOVER++;GL.hq=false;if(layer==='v'&&!GL.on)vDesenha2D();varPainel();return}
+async function vAnimLiga(on){if(!on||!VAR){vAnimPara();VANIM.on=false;VANIM.j=null;$('#vyr').hidden=true;VOVER++;GL.hq=false;if(layer==='v'&&!GL.on)vDesenha2D();if(lvl>=2&&curC>=0)vPais(curC);varPainel();return}
  let j;try{j=await vFicheiro(VAR)}catch(e){alert(L2('Não foi possível carregar as séries anuais desta variável.','Could not load the annual series of this variable.'));return}
  const amostra=[];for(let i=0;i<j.Q.length;i+=7){const q=j.Q[i];if(q!==-32768)amostra.push(Math.abs(q*j.prec))}amostra.sort((a,b)=>a-b);VANIM.esc=amostra[Math.floor(amostra.length*.95)]||1;   // escala: 95 % das anomalias
- VANIM.j=j;VANIM.on=true;VANIM.can={};const r=$('#vyR');r.min=0;r.max=j.n-1;$('#vyNome').textContent=vNome(VAR);const q=VQUENTE.includes(VAR.id);$('#vyLeg').textContent=L2(q?'vermelho: acima da média · azul: abaixo':'verde-azulado: acima da média · castanho: abaixo',q?'red: above average · blue: below':'teal: above average · brown: below');$('#vyr').hidden=false;vAnimQuadro(j.n-1);varPainel()}
+ VANIM.j=j;VANIM.on=true;VANIM.can={};vLimpa();const r=$('#vyR');r.min=0;r.max=j.n-1;$('#vyNome').textContent=vNome(VAR);const q=VQUENTE.includes(VAR.id);$('#vyLeg').textContent=L2(q?'vermelho: acima da média · azul: abaixo':'verde-azulado: acima da média · castanho: abaixo',q?'red: above average · blue: below':'teal: above average · brown: below');$('#vyr').hidden=false;vAnimQuadro(j.n-1);varPainel()}
 function vAnimPlay(){if(VANIM.ti){vAnimPara();return}$('#vyP').textContent='⏸';VANIM.ti=setInterval(()=>{if(VANIM.k>=VANIM.j.n-1&&VANIM.ms<500){vAnimPara();return}vAnimQuadro(VANIM.k+1)},VANIM.ms)}
 document.body.insertAdjacentHTML('beforeend',`<div class="yr gl" id="vyr" hidden><button class="b" id="vyP">▶</button><input type="range" id="vyR" min="0" max="21" value="0"><b id="vyL"></b><span style="font-size:12px"><span id="vyNome"></span><br><span class="mut" id="vyLeg"></span></span><button class="b" id="vyX" aria-label="×">×</button></div>`);
 $('#vyP').onclick=vAnimPlay;$('#vyR').oninput=e=>{vAnimPara();vAnimQuadro(+e.target.value)};$('#vyX').onclick=()=>vAnimLiga(false);
 {const _vl=varLiga;window.varLiga=function(id){if(VANIM.on&&(!VAR||VAR.id!==id)){vAnimPara();VANIM.on=false;VANIM.j=null;$('#vyr').hidden=true}return _vl.apply(this,arguments)}}
 {const _sl2=window.setLayer;window.setLayer=function(l){if(l!=='v'&&VANIM.on){vAnimPara();VANIM.on=false;VANIM.j=null;$('#vyr').hidden=true}return _sl2.apply(this,arguments)}}
-{const _sl=window.setLayer;window.setLayer=function(l){if(l!=='v'){d3.select('#varimg').remove();cg.attr('display',null);VOVER++;GL.hq=false}return _sl.apply(this,arguments)}}
-{const _rl=window.relayout;window.relayout=function(){const r=_rl.apply(this,arguments);if(layer==='v')vDesenha2D();return r}}
-{const _go=window.go;window.go=function(){const r=_go.apply(this,arguments);if(layer==='v')cg.attr('display','none');return r}}
+{const _sl=window.setLayer;window.setLayer=function(l){if(l!=='v'){vLimpa();d3.select('#varimg').remove();cg.attr('display',null);VOVER++;GL.hq=false}return _sl.apply(this,arguments)}}
+{const _rl=window.relayout;window.relayout=function(){const r=_rl.apply(this,arguments);if(layer==='v'){vDesenha2D();if(lvl>=2&&curC>=0)vPais(curC)}return r}}
+{const _go=window.go;window.go=function(i){const r=_go.apply(this,arguments);if(layer==='v'){cg.attr('display','none');vPais(i);if(!quiet)openWin('i',true)}return r}}
+{const _w=window.world;window.world=function(){vLimpa();return _w.apply(this,arguments)}}
+{const _c=window.cont;window.cont=function(){vLimpa();return _c.apply(this,arguments)}}
 // clicar no mapa com uma variável escolhida: mostra a série anual da célula
-svg.node().addEventListener('click',e=>{if(layer!=='v'||!VAR)return;e.stopPropagation();const ll=proj.invert(d3.zoomTransform(svg.node()).invert(d3.pointer(e,svg.node())));if(ll)varCelula(ll[1],ll[0])},true);
+svg.node().addEventListener('click',e=>{if(layer!=='v'||!VAR)return;const d=e.target.__data__;
+ if(e.target.classList.contains('vb')){e.stopPropagation();varCelula(89.5-d.r,d.c-179.5);vcg.selectAll('path').classed('sel',x=>x===d);return}   // bloco do país: série da célula
+ if(d&&d.properties&&d.properties.i!=null&&!(lvl>=2&&d.properties.i===curC))return;   // clique num país: entra no continente / no país, como no metano
+ e.stopPropagation();const ll=proj.invert(d3.zoomTransform(svg.node()).invert(d3.pointer(e,svg.node())));if(ll)varCelula(ll[1],ll[0])},true);
 async function vFicheiro(v){if(!VFICH[v.id])VFICH[v.id]=fetch(`vars/${v.id}.json`).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{const n=j.anos.length,q=new Int16Array(b64u8(j.serie).buffer);j.n=n;j.Q=q;return j});
  try{return await VFICH[v.id]}catch(e){delete VFICH[v.id];throw e}}
 function vSerieCel(j,pos){const out=[];for(let k=0;k<j.n;k++){const q=j.Q[pos*j.n+k];out.push(q===-32768?null:j.med[pos]+q*j.prec)}return out}
@@ -816,6 +822,33 @@ async function varCelula(lat,lon){const v=VAR;if(!v)return;const r=Math.floor(90
   ${pv?`<p style="font-size:13px"><b>${pn.n}:</b> ${fmtN(pv[0],3)} ${vTr(v)}, ${pv[5]?L2('significativo','significant'):L2('não significativo','not significant')}.</p>`:''}
   <p class="mut" style="font-size:11.5px">${L2('Fonte','Source')}: ${v.fonte}. ${L2('Método: Sen + Mann-Kendall corrigido para autocorrelação, FDR q < 0,05.','Method: Sen + autocorrelation-corrected Mann-Kendall, FDR q < 0.05.')}</p>`}
  catch(e){$('#info').innerHTML=tit+`<p class="mut">${L2('Não foi possível carregar a série desta variável (ficheiro vars/','Could not load this variable series (file vars/')}${v.id}.json).</p>`}}
+// ---------- blocos por país (como no metano): ao entrar num país, cada célula de 1° aparece como um bloco com a sua zona ----------
+const vcg=g.insert('g',()=>cg.node().nextSibling).attr('id','vcg');
+const VZ=[{pt:'Desce muito',en:'Falls strongly'},{pt:'Desce',en:'Falls'},{pt:'Sem mudança significativa',en:'No significant change'},{pt:'Sobe',en:'Rises'},{pt:'Sobe muito',en:'Rises strongly'}],
+ vZona=(v,i)=>{const r=v.R[i];return !sigBit(v,i)?2:r>=60?4:r>0?3:r<=-60?0:1},
+ vZcor=(v,z)=>z===2?'rgb(154,163,168)':'rgb('+vCor(v,[-.9,-.4,0,.4,.9][z],true).slice(0,3).join(',')+')';
+function vLimpa(){vcg.selectAll('path').remove();d3.select('#varimg').style('opacity',null)}
+function vCelulasPais(v,i){const f=D.geo.features.find(x=>x.properties.i===i),b=D.countries[i].b;if(!f)return [];
+ const dentro=(lo,la)=>{const g=f.geometry;return g.type==='Polygon'?polyIn(g.coordinates,lo,la):g.type==='MultiPolygon'?g.coordinates.some(p=>polyIn(p,lo,la)):false},
+  mar=v.dom==='mar',m=mar?3:0,r0=Math.max(0,Math.floor(90-b[3]-m)),r1=Math.min(179,Math.floor(90-b[1]+m)),c0=Math.max(0,Math.floor(b[0]+180-m)),c1=Math.min(359,Math.floor(b[2]+180+m)),L=[],caixa=[];
+ for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){const k=r*360+c;if(v.R[k]===-128)continue;const lo=c-179.5,la=89.5-r;caixa.push({r,c,k});
+  if(mar?!featAt([lo,la]):dentro(lo,la))L.push({r,c,k})}
+ return L.length||mar?L:caixa.filter(x=>Math.abs(x.c-179.5-(b[0]+b[2])/2)<=1.5&&Math.abs(89.5-x.r-(b[1]+b[3])/2)<=1.5)}   // país pequeno: as células à volta do centro
+function vPais(i){vLimpa();if(layer!=='v'||!VAR||lvl<2||VANIM.on)return;const v=VAR,L=vCelulasPais(v,i);L.forEach(x=>x.z=vZona(v,x.k));
+ d3.select('#varimg').style('opacity',.35);
+ const rect=x=>{const a=proj([x.c-180,90-x.r]),b=proj([x.c-179,89-x.r]);return `M${a[0]},${a[1]}H${b[0]}V${b[1]}H${a[0]}Z`};
+ vcg.selectAll('path').data(L).join('path').attr('class','k vb').attr('d',rect).style('fill',x=>vZcor(v,x.z)).style('fill-opacity',.85)
+  .append('title').text(x=>`${(89.5-x.r).toFixed(1)}°, ${(x.c-179.5).toFixed(1)}° · ${VZ[x.z][LANG]||VZ[x.z].pt}`);
+ const cn=D.countries[i],pv=v.paises[cn.en],n=[0,0,0,0,0];L.forEach(x=>n[x.z]++);
+ $('#info').innerHTML=`<h2>${cn.n}: ${vNome(v)}</h2>
+  <div style="display:flex;flex-direction:column;gap:4px;font-size:13px;margin:6px 0">${[4,3,2,1,0].map(z=>`<span><i style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${vZcor(v,z)};vertical-align:-1px;margin-right:6px"></i>${VZ[z][LANG]||VZ[z].pt}: <b>${n[z]}</b> ${L2('blocos','blocks')}</span>`).join('')}</div>
+  <p class="mut" style="font-size:12px">${L.length} ${L2('blocos de 1° (~110 km)','1° blocks (~110 km)')}${v.dom==='mar'?L2(' no mar à volta do país',' in the sea around the country'):''}. ${L2('«Muito» = metade ou mais da escala de cores. Clica num bloco para ver a sua série anual.','«Strongly» = half the colour scale or more. Click a block to see its annual series.')}</p>
+  ${pv?`<p style="font-size:13.5px"><b>${L2('No país','In the country')}:</b> ${fmtN(pv[0],3)} ${vTr(v)} (${L2('IC 95 %','95% CI')} ${fmtN(pv[1],3)} ${L2('a','to')} ${fmtN(pv[2],3)}), ${pv[5]?L2('significativo','significant'):L2('não significativo','not significant')}.</p>`:''}
+  <div id="vPaisG"><p class="mut">${L2('A calcular a série média do país…','Computing the country mean series…')}</p></div>
+  <p class="mut" style="font-size:11.5px">${L2('Fonte','Source')}: ${v.fonte}.</p>`;
+ vFicheiro(v).then(j=>{if(VAR!==v||curC!==i)return;const pos=new Map(j.cel.map((c,p)=>[c,p])),soma=new Array(j.n).fill(0),cont=new Array(j.n).fill(0);
+  L.forEach(x=>{const p=pos.get(x.k);if(p==null)return;vSerieCel(j,p).forEach((y,k)=>{if(y!=null){soma[k]+=y;cont[k]++}})});
+  const s=soma.map((y,k)=>cont[k]?y/cont[k]:null),el=$('#vPaisG');if(el)el.innerHTML=`<h2 style="font-size:14px;margin-top:10px">${L2('Média do país, ano a ano','Country mean, year by year')}</h2>`+vGrafico(v,j.anos,s)}).catch(()=>{const el=$('#vPaisG');if(el)el.innerHTML=''})}
 // ---------- janela ----------
 const VICO='<svg class="fa" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h2v16h16v2H3z" fill="currentColor"/><path d="M7 15l4-5 3 3 5-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 6h4v4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
 document.querySelector('.dk').insertAdjacentHTML('afterbegin',`<button class="b gl bb" id="btnVar"><span class="ic">${VICO}</span><span class="tip">${'Variáveis da Terra'}</span></button>`);
@@ -830,12 +863,24 @@ addEventListener('resize',()=>setTimeout(dkTop,50));
 document.head.insertAdjacentHTML('beforeend','<style>@media(max-width:700px){#ttlSub{display:none}}#vsw button{white-space:nowrap}#vswN{min-width:190px}#vsw #vswN.on{background:var(--acc);color:#fff}@media(max-width:700px){#vswN{min-width:0;max-width:110px;overflow:hidden;text-overflow:ellipsis}#vswT{display:none}}</style>');
 $('#vis').insertAdjacentHTML('afterend',`<div class="gl vis" id="vsw" role="group" aria-label="Variável"><button id="vswA" aria-label="Variável anterior">◀</button><button id="vswN"></button><button id="vswB" aria-label="Variável seguinte">▶</button><button id="vswT"></button></div>`);
 let VCIC=0;
+// menu de camadas: todas as opções de mapa num só sítio
+document.head.insertAdjacentHTML('beforeend','<style>#lyMenu .b{text-align:left;width:100%;padding:7px 10px}#lyMenu .b.on{background:var(--acc);color:#fff;border-color:var(--acc)}#lyMenu small{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}</style>');
+function lyMenu(){let m=$('#lyMenu');if(m){m.remove();return}
+ const it=(k,t,on)=>`<button class="b${on?' on':''}" data-ly="${k}">${t}</button>`,
+  op=[['n',L2('Mapa natural','Natural map')],['t',L2('Metano: tendência por país','Methane: trend by country')],['c',L2('Chuva (GPM): tendência','Rainfall (GPM): trend')]];if(D.gpmT)op.push(['y',L2('Chuva ano a ano','Rainfall year by year')]);
+ const b=$('#btnL').getBoundingClientRect();
+ document.body.insertAdjacentHTML('beforeend',`<div class="gl" id="lyMenu" style="position:fixed;left:${b.right+10}px;top:${Math.max(8,Math.min(b.top-40,innerHeight-560))}px;z-index:30;padding:10px;display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 16px);overflow:auto;width:260px;max-width:calc(100vw - ${b.right+20}px)">
+  <small class="mut">${L2('Camadas','Layers')}</small>${op.map(([k,t])=>it(k,t,layer===k)).join('')}
+  <small class="mut" style="margin-top:6px">${L2('Variáveis da Terra (NASA)','Earth variables (NASA)')}</small>${VD.map(v=>it('v:'+v.id,vNome(v),layer==='v'&&VAR===v)).join('')}</div>`);
+ m=$('#lyMenu');m.querySelectorAll('[data-ly]').forEach(x=>x.onclick=e=>{e.stopPropagation();const k=x.dataset.ly;m.remove();vswPara();if(k.startsWith('v:')){VAR1=true;VTAB='var';varLiga(k.slice(2))}else setLayer(k)})}
+document.addEventListener('click',e=>{const m=$('#lyMenu');if(m&&!m.contains(e.target)&&!e.target.closest('#btnL'))m.remove()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#lyMenu')){$('#lyMenu').remove();e.stopImmediatePropagation()}},true);
 function vswTxt(){const on=layer==='v'&&!!VAR;$('#vswN').textContent=on?vNome(VAR):L2('Variáveis da NASA','NASA variables');$('#vswN').classList.toggle('on',on);$('#vswT').textContent=VCIC?L2('■ Parar','■ Stop'):L2('⟳ Todas','⟳ All');$('#vswT').title=L2('Mostra todas as variáveis, uma a uma','Shows every variable, one by one');dkTop()}
 function vswPasso(d){const i=layer==='v'&&VAR?VD.indexOf(VAR):(d>0?-1:0),v=VD[(i+d+VD.length)%VD.length];VAR1=true;VTAB='var';window._vswMuda=true;try{varLiga(v.id)}finally{window._vswMuda=false}}
 function vswPara(){clearInterval(VCIC);VCIC=0;vswTxt()}
 $('#vswA').onclick=()=>{vswPara();vswPasso(-1)};$('#vswB').onclick=()=>{vswPara();vswPasso(1)};$('#vswN').onclick=()=>{if(layer!=='v'||!VAR)vswPasso(1);openWin('v',true);varPainel()};
 $('#vswT').onclick=()=>{if(VCIC){vswPara();return}vswPasso(1);VCIC=setInterval(()=>vswPasso(1),4500);vswTxt()};
-{const _vl=window.varLiga;window.varLiga=function(){const r=_vl.apply(this,arguments);vswTxt();return r}}
+{const _vl=window.varLiga;window.varLiga=function(){const r=_vl.apply(this,arguments);vswTxt();if(lvl>=2&&curC>=0)vPais(curC);return r}}
 {const _sl=window.setLayer;window.setLayer=function(l){const r=_sl.apply(this,arguments);if(l!=='v'&&VCIC&&!window._vswMuda)vswPara();vswTxt();return r}}
 function vBarra(v){return `<span style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--bd);margin-top:4px"><i style="width:${v.sobe}%;background:${VQUENTE.includes(v.id)?'#d7301f':'#018571'}"></i><i style="width:${v.desce}%;background:${VQUENTE.includes(v.id)?'#2166ac':'#a6611a'}"></i></span>`}
 const vDom=v=>v.dom==='terra'?L2('terra','land'):v.dom==='mar'?L2('oceano','ocean'):L2('mundo','world'),vTipo=v=>v.tipo==='modelo'?L2('modelo','model'):L2('satélite','satellite');
@@ -1151,11 +1196,11 @@ const BOT_PASSOS=[
   [{ex:'s',pt:'O gráfico «mesma época, sentidos opostos» mostra países a ficar mais húmidos e outros mais secos ao mesmo tempo.',en:'The «same period, opposite directions» chart shows countries getting wetter and others drier at the same time.',antes:async id=>{await rola('#w-r',titulo('#w-r',/opostos|opposite/),id)}}]),
  {ex:'s',t:{pt:'As camadas do mapa',en:'The map layers'},seg:[
   {alvo:'#btnL',ex:'o',pt:'Este botão muda as cores do mapa.',en:'This button changes the colours of the map.',antes:async id=>{fechaJanelas();if(D.gpmT&&GL.on){await clicaEm('#vis [data-v="2d"]',id);await espera(600,id)}await aponta('#btnL')(id)}},
-  {alvo:'#btnL',ex:'c',pt:'Primeiro, a tendência do metano por país.',en:'First, the methane trend by country.',antes:async id=>{await clicaEm('#btnL',id);fechaJanelas()},p:1300},
-  {alvo:'#btnL',ex:'s',pt:'Depois, a chuva: castanho é mais seco e verde-azulado é mais húmido.',en:'Then rainfall: brown is drier and blue-green is wetter.',antes:async id=>{await clicaEm('#btnL',id);fechaJanelas()},p:1300},
-  ...(D.gpmT?[{alvo:'#yr',ex:'r',pt:'E a chuva ano a ano, com um botão para ver os anos a passar.',en:'And rainfall year by year, with a button to watch the years go by.',antes:async id=>{await clicaEm('#btnL',id);fechaJanelas()},
+  {alvo:'#btnL',ex:'c',pt:'Primeiro, a tendência do metano por país.',en:'First, the methane trend by country.',antes:async id=>{await clicaEm('#btnL',id,lyCiclo);fechaJanelas()},p:1300},
+  {alvo:'#btnL',ex:'s',pt:'Depois, a chuva: castanho é mais seco e verde-azulado é mais húmido.',en:'Then rainfall: brown is drier and blue-green is wetter.',antes:async id=>{await clicaEm('#btnL',id,lyCiclo);fechaJanelas()},p:1300},
+  ...(D.gpmT?[{alvo:'#yr',ex:'r',pt:'E a chuva ano a ano, com um botão para ver os anos a passar.',en:'And rainfall year by year, with a button to watch the years go by.',antes:async id=>{await clicaEm('#btnL',id,lyCiclo);fechaJanelas()},
    a:async id=>{await clicaEm('#yPlay',id);await espera(4000,id);await clicaEm('#yPlay',id)}}]:[]),
-  {alvo:'#btnL',ex:'f',pt:'E de volta ao mapa natural.',en:'And back to the natural map.',antes:async id=>{await clicaEm('#btnL',id);if(layer!=='n')setLayer('n');fechaJanelas()}}]},
+  {alvo:'#btnL',ex:'f',pt:'E de volta ao mapa natural.',en:'And back to the natural map.',antes:async id=>{await clicaEm('#btnL',id,lyCiclo);if(layer!=='n')setLayer('n');fechaJanelas()}}]},
  painelP('g','f',{pt:'Gémeo digital',en:'Digital twin'},{pt:'Simula o funcionamento da EcoCell: mudas o caudal e a composição do gás e vês os resultados.',en:'It simulates how EcoCell works: you change the gas flow and composition and see the results.'},
   [{ex:'p',pt:'Compara três cenários: sem EcoCell, EcoCell conservador e EcoCell otimizado. São hipóteses de demonstração, ainda não são medições.',en:'It compares three scenarios: without EcoCell, conservative EcoCell and optimised EcoCell. These are demonstration assumptions, not measurements yet.',antes:desce('#w-g')}]),
  {ex:'n',t:{pt:'Comparar dois países',en:'Comparing two countries'},seg:[
