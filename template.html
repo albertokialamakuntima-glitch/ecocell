@@ -1456,13 +1456,51 @@ function ecoAbre(){if(BOT.conv)return;const bot=$('#bot');
   requestAnimationFrame(()=>{botVoa(true,()=>{if(!BOT.on)return;bot.style.opacity='';if(!reduzir())bot.animate([{opacity:0,transform:'translateX(-50%) scale(.6)'},{opacity:1,transform:'translateX(-50%) scale(1)'}],{duration:400,easing:'cubic-bezier(.3,1.6,.5,1)'})});$('#logo').style.visibility='hidden'});
   clearInterval(BOT.seg);BOT.seg=setInterval(botSegue,200)}
  BOT.conv=true;bot.classList.add('conv');$('#botPerg').hidden=false;botBotoes();convTitulos();$('#botTx').innerHTML='';chips()}
-function convTitulos(){$('#botSub').textContent=L2('assistente EcoCell','EcoCell assistant');$('#botT').textContent=L2('Em que posso ajudar?','How can I help?');$('#botDots').innerHTML='';$('#botX').title=L2('Fechar a Eco','Close Eco');micUI()}
+function convTitulos(){$('#botSub').textContent=L2('assistente EcoCell','EcoCell assistant')+(typeof IA!=='undefined'&&IA.url?' · IA Gemini':'');$('#botT').textContent=L2('Em que posso ajudar?','How can I help?');$('#botDots').innerHTML='';$('#botX').title=L2('Fechar a Eco','Close Eco');micUI()}
 function ecoFecha(){if(!BOT.conv)return;BOT.conv=false;BOT.on=false;BOT.run++;if('speechSynthesis' in window)speechSynthesis.cancel();if(BOT.audio){BOT.audio.pause();BOT.audio=null}clearInterval(BOT.ti);clearInterval(BOT.seg);OUV.fala=false;OUV.livre=0;
  BOT.el=null;$('#spot').classList.remove('on');$('#botCur').style.opacity=0;$('#ecoVoo').classList.remove('on');$('#botAv').style.visibility='';const bot=$('#bot');bot.classList.remove('conv');$('#botPerg').hidden=true;$('#botOuv').textContent='';
  botVoa(false,()=>{bot.hidden=true;bot.style.opacity='';$('#logo').style.visibility=''});bot.style.opacity=0;micUI()}
 async function ecoDiz(t){const id=++BOT.run;OUV.fala=true;$('#botTx').innerHTML='';cara('f',1);try{await diz(t,id)}catch(e){}if(id===BOT.run){OUV.fala=false;OUV.ate=performance.now()+700;OUV.livre=performance.now()+15000;micUI()}}   // depois de responder ouve 15 s sem precisar de «Olá Eco»
-function pergunta(t){ecoAbre();const q=nrm(t),w=acordou(q),txt=w!==null?w:t;$('#botOuv').dataset.q='1';$('#botOuv').textContent='«'+(w!==null&&w?txt:t)+'»';setTimeout(()=>{delete $('#botOuv').dataset.q},4000);
+/* --- Eco IA: com o ficheiro eco_ia.json ({"url": "https://….workers.dev"}) as perguntas vão para o Gemini através do Worker da Cloudflare,
+   junto com os dados atuais do site; sem ele (ou se a IA falhar) a Eco responde com as regras acima --- */
+const IA={url:null,hist:[],n:0};
+fetch('eco_ia.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&/^https:\/\//.test(j.url||'')){IA.url=j.url.replace(/\/+$/,'');if(BOT.conv)convTitulos()}}).catch(()=>{});
+let HIST=null;const histCarrega=()=>HIST||(HIST=fetch('historico.json',{cache:'no-store'}).then(r=>r.ok?r.json():[]).catch(()=>[]));
+// ordens curtas que a Eco faz logo, sem perguntar à IA
+const COMANDO=/\b(adeus|tchau|xau|ate logo|ate ja|fecha|fechar|close|bye|goodbye|sair|exit|desliga|visita guiada|tour|globo|globe|3d|2d|mapa plano|flat map|anima|animar|animacao|animate|animation|ano a ano|year by year|ingles|english|portugues|portuguese|volta|voltar|parar|stop|obrigad[oa]|thanks)\b/;
+const r3=x=>x==null||!isFinite(x)?null:+(+x).toPrecision(3);
+function pearson(x,y){const n=x.length,mx=x.reduce((a,b)=>a+b)/n,my=y.reduce((a,b)=>a+b)/n;let sxy=0,sx=0,sy=0;for(let k=0;k<n;k++){sxy+=(x[k]-mx)*(y[k]-my);sx+=(x[k]-mx)**2;sy+=(y[k]-my)**2}return sxy/Math.sqrt(sx*sy)}
+async function contextoIA(q){const H=await histCarrega(),anos=v=>Array.from({length:v.anos[1]-v.anos[0]+1},(_,k)=>v.anos[0]+k);
+ const ps=new Set();for(const [s,i] of paisesNomes()){if(ps.size>=3)break;if(tem(q,new RegExp('[^a-z]'+s.replace(/ /g,'\\s')+'[^a-z]')))ps.add(i)}if(curC>=0)ps.add(curC);if(OUV.ctx.p>=0)ps.add(OUV.ctx.p);
+ const top=(v,d)=>Object.entries(v.paises).filter(([,a])=>d?a[5]<0:a[5]>0).sort((a,b)=>d?a[1][0]-b[1][0]:b[1][0]-a[1][0]).slice(0,5).map(([e,a])=>[e,r3(a[0])]);
+ const cor=[];for(let a=0;a<VD.length;a++)for(let b=a+1;b<VD.length;b++){const A=VD[a],B=VD[b],xs=[],ys=[];
+  anos(A).forEach((y,k)=>{const kb=y-B.anos[0],x=A.glob.serie[k],z=B.glob.serie[kb];if(kb>=0&&x!=null&&z!=null){xs.push(x);ys.push(z)}});if(xs.length>6)cor.push({a:A.id,b:B.id,r:r3(pearson(xs,ys)),anos:xs.length})}
+ return{projeto:{nome:'EcoCell Earth Intelligence',desafio:'NASA Space Apps Challenge 2026, avançado, Ciências da Terra: escolher variáveis de missões/modelos da NASA, ver a mudança no tempo e dizer o que muda, onde, quanto e se é significativo',
+   autores:'Alberto Quiala Makuntima e equipa EcoCell',endereco:location.origin+location.pathname,atualizacao:'automática todos os dias às 00:00 de Luanda (23:00 UTC), por um robô do GitHub Actions que vai buscar os dados da NASA e reconstrói o site',
+   metodo:'tendência de Sen por bloco de 1 grau (~110 km), teste de Mann-Kendall, correção FDR (q<0,05); zonas: sobe muito, sobe, sem mudança significativa, desce, desce muito',
+   site_gerado_em_utc:D.meta.built,metano_dados_ate:D.meta.end,outras_partes:'mapa 2D e globo 3D, animação ano a ano, blocos por país, células de metano com pontuação e simulação EcoCell, chuva GPM, comparar países, ligar variáveis, visita guiada com a Eco',
+   nota_series:'serie_anomalia_anual = diferença de cada ano para a média do período (media_periodo); a clorofila está em log10 de mg/m³'},
+  estado_mapa:{vista:GL.on?'globo 3D':'mapa 2D',variavel:VAR?VAR.id:null,nivel:['mundo','continente','país','bloco'][lvl]||'mundo',continente:lvl===1&&cur>=0?CN[cur].n:null,pais:curC>=0&&lvl>=2?D.countries[curC].en:null,animacao:!!VANIM.on},
+  variaveis:VD.map(v=>({id:v.id,nome:vNome(v),unidade_tendencia:vTr(v),unidade:v.un,fonte:v.fonte,tipo:v.tipo,dominio:v.dom,anos:v.anos,
+   tendencia_global:{por_decada:r3(v.glob.s),ic95:[r3(v.glob.lo),r3(v.glob.hi)],p:r3(v.glob.p)},area_sobe_pct:v.sobe,area_desce_pct:v.desce,media_periodo:r3(v.glob.media),
+   serie_anomalia_anual:Object.fromEntries(anos(v).map((y,k)=>[y,r3(v.glob.serie[k])])),paises_que_mais_sobem:top(v,0),paises_que_mais_descem:top(v,1)})),
+  paises:[...ps].slice(0,4).map(i=>{const c=D.countries[i];return{nome:pNome(i),nome_en:c.en,tendencias_por_decada:Object.fromEntries(VD.filter(v=>v.paises[c.en]).map(v=>{const a=v.paises[c.en];return[v.id,{valor:r3(a[0]),ic95:[r3(a[1]),r3(a[2])],p:r3(a[3]),significativa:a[5]!==0}]}))}}),
+  correlacao_series_globais:cor,historico:(H||[]).slice(-10),hoje_luanda:new Date(Date.now()+36e5).toISOString().slice(0,10)}}
+async function perguntaIA(t){const ctx=await contextoIA(nrm(t)),c=new AbortController(),to=setTimeout(()=>c.abort(),30000);
+ try{const r=await fetch(IA.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pergunta:t,lang:LANG,contexto:JSON.stringify(ctx),historico:IA.hist}),signal:c.signal});
+  const j=await r.json().catch(()=>({}));if(!r.ok||!j.resposta)throw new Error(j.erro||('HTTP '+r.status));return j}finally{clearTimeout(to)}}
+// a IA pode mexer no mapa: {tipo, valor}
+function aplicaAcoes(L){for(const a of (L||[])){const t=a.tipo,val=nrm(a.valor||'');try{
+ if(t==='variavel'||t==='animar'){const x=vById(a.valor)||(val&&VD.find(z=>nrm(vNome(z)).includes(val)));if(x){varLiga(x.id);OUV.ctx.v=x}if(t==='animar'&&VAR)vAnimLiga(true)}
+ else if(t==='pais'){let i=D.countries.findIndex(c=>nrm(c.en)===val||nrm(c.n)===val||nrm(PTNOME[c.en]||'')===val);if(i<0)i=acharPais(val);if(i>=0){go(i);OUV.ctx.p=i}}
+ else if(t==='continente'){let k=CN.findIndex(c=>nrm(c.n)===val||nrm(CNEN[c.n]||'')===val);if(k<0)k=acharCont(val);if(k>=0)cont(k)}
+ else if(t==='mundo')world();else if(t==='globo3d')glToggle(true);else if(t==='mapa2d')glToggle(false);else if(t==='parar_animacao')vAnimLiga(false)}catch(e){console.warn('ação da IA',a,e)}}}
+async function pergunta(t){ecoAbre();const q=nrm(t),w=acordou(q),txt=w!==null?w:t;$('#botOuv').dataset.q='1';$('#botOuv').textContent='«'+(w!==null&&w?txt:t)+'»';setTimeout(()=>{delete $('#botOuv').dataset.q},4000);
  if(w!==null&&w.length<2)return ecoDiz(L2('Olá! Em que posso ajudar?','Hello! How can I help?'));
+ const nq=nrm(txt),ordem=nq.split(' ').length<=6&&tem(nq,COMANDO),id0=++IA.n;
+ if(IA.url&&!ordem){$('#botQ').innerHTML='';$('#botTx').textContent=L2('A pensar…','Thinking…');cara('p');
+  try{const r=await perguntaIA(t);if(id0!==IA.n)return;aplicaAcoes(r.acoes);IA.hist.push({q:t,r:r.resposta});IA.hist=IA.hist.slice(-6);convTitulos();ecoDiz(r.resposta);return}
+  catch(e){console.warn('Eco IA indisponível; respondo com as regras',e);if(id0!==IA.n)return}}
  let r;try{r=responde(txt)}catch(e){console.error(e);r={t:L2('Desculpa, algo correu mal ao responder.','Sorry, something went wrong while answering.')}}
  if(r.chips)chips();else $('#botQ').innerHTML='';
  if(r.fim){ecoDiz(r.t).then(()=>ecoFecha());return}

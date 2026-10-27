@@ -155,6 +155,17 @@ data={'cells':cells,'countries':cs,'geo':{'type':'FeatureCollection','features':
       'vars':(json.load(open('variaveis.json',encoding='utf-8')) if os.path.exists('variaveis.json') else None)}   # seletor de variáveis (variaveis_tendencias.py); as séries por célula ficam em vars/*.json
 json.dump({n:CONT[K[i]][0] for i,n in enumerate(names)},open('continentes.json','w',encoding='utf-8'),ensure_ascii=False)
 json.dump(AC if AIRS else {},open('airs_celulas.json','w',encoding='utf-8'),separators=(',',':'))   # séries do AIRS por bloco: ficheiro à parte, carregado depois de a página abrir (a página fica ~3,8 MB mais leve)
+# histórico diário: um retrato dos números principais por dia (hora de Luanda), para a Eco comparar «ontem vs hoje» e «semana passada»
+try:
+    import datetime as _dt
+    _hoje=(_dt.datetime.now(_dt.timezone.utc)+_dt.timedelta(hours=1)).strftime('%Y-%m-%d')
+    _H=json.load(open('historico.json',encoding='utf-8')) if os.path.exists('historico.json') else []
+    _V=(data.get('vars') or {}).get('vars') or []
+    _r={'data':_hoje,'gerado':data['meta']['built'],'metano_ate':data['meta'].get('end'),
+        'vars':{v['id']:{'anos':v['anos'],'tendencia':round(v['glob']['s'],5),'ic':[round(v['glob']['lo'],5),round(v['glob']['hi'],5)],'p':v['glob']['p'],'sobe_pct':v['sobe'],'desce_pct':v['desce'],'celulas':v['n']} for v in _V}}
+    _H=[h for h in _H if h.get('data')!=_hoje]+[_r]
+    json.dump(_H[-400:],open('historico.json','w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
+except Exception as _e: print('histórico não atualizado:',_e)
 h=open('template.html',encoding='utf-8').read().replace('__DATA__',json.dumps(data,ensure_ascii=False,separators=(',',':')))
 _OUT='index.html'
 open(_OUT,'w',encoding='utf-8').write(h)
