@@ -1460,7 +1460,9 @@ function convTitulos(){$('#botSub').textContent=L2('assistente EcoCell','EcoCell
 function ecoFecha(){if(!BOT.conv)return;BOT.conv=false;BOT.on=false;BOT.run++;if('speechSynthesis' in window)speechSynthesis.cancel();if(BOT.audio){BOT.audio.pause();BOT.audio=null}clearInterval(BOT.ti);clearInterval(BOT.seg);OUV.fala=false;OUV.livre=0;
  BOT.el=null;$('#spot').classList.remove('on');$('#botCur').style.opacity=0;$('#ecoVoo').classList.remove('on');$('#botAv').style.visibility='';const bot=$('#bot');bot.classList.remove('conv');$('#botPerg').hidden=true;$('#botOuv').textContent='';
  botVoa(false,()=>{bot.hidden=true;bot.style.opacity='';$('#logo').style.visibility=''});bot.style.opacity=0;micUI()}
-async function ecoDiz(t){const id=++BOT.run;OUV.fala=true;$('#botTx').innerHTML='';cara('f',1);try{await diz(t,id)}catch(e){}if(id===BOT.run){OUV.fala=false;OUV.ate=performance.now()+700;OUV.livre=performance.now()+15000;micUI()}}   // depois de responder ouve 15 s sem precisar de «Olá Eco»
+async function ecoDiz(t){const id=++BOT.run;OUV.fala=true;$('#botTx').innerHTML='';cara('f',1);
+ if(BOT.voz&&navigator.userActivation&&!navigator.userActivation.hasBeenActive)setTimeout(()=>avisoVoz(L2('Para ouvires a minha voz, carrega uma vez em qualquer sítio da página (regra do browser).','To hear my voice, click once anywhere on the page (browser rule).')),300);   /* o browser só deixa falar depois do 1.º clique */
+try{await diz(t,id)}catch(e){}if(id===BOT.run){OUV.fala=false;OUV.ate=performance.now()+700;OUV.livre=performance.now()+15000;micUI()}}   // depois de responder ouve 15 s sem precisar de «Olá Eco»
 /* --- Eco IA: com o ficheiro eco_ia.json ({"url": "https://….workers.dev"}) as perguntas vão para o Gemini através do Worker da Cloudflare,
    junto com os dados atuais do site; sem ele (ou se a IA falhar) a Eco responde com as regras acima --- */
 const IA={url:null,hist:[],n:0};
@@ -1523,10 +1525,13 @@ function ouvLiga(on){if(!SR){ecoAbre();ecoDiz(L2('Este browser não percebe voz.
   ouvInicia();ecoAbre();ecoDiz(L2('Estou a ouvir! Diz «Olá Eco» e faz a tua pergunta. Por exemplo: «Olá Eco, como está o metano em Angola?»','I am listening! Say «Hey Eco» and ask your question. For example: «Hey Eco, how is methane in Angola?»'))}
  else{const r=OUV.rec;OUV.rec=null;if(r)try{r.abort()}catch(e){}}
  micUI()}
-$('#ecoMic').onclick=()=>ouvLiga(!OUV.on);
+$('#ecoMic').onclick=()=>{ouvLiga(!OUV.on);try{localStorage.setItem('ecocell-mic',OUV.on?'1':'0')}catch(e){}};   // lembra a escolha: desligado fica desligado
 $('#botPerg').onsubmit=e=>{e.preventDefault();const t=$('#botIn').value.trim();if(!t)return;$('#botIn').value='';pergunta(t)};
 $('#botX').onclick=()=>BOT.conv?ecoFecha():botEnd();
 $('#btnLang').addEventListener('click',()=>{setTimeout(()=>{if(OUV.rec)try{OUV.rec.abort()}catch(e){}if(BOT.conv){convTitulos();chips()}micUI()},80)});   // o microfone passa a ouvir na nova língua
 micUI();
+// microfone já autorizado neste site (e não desligado no botão): a Eco começa a ouvir logo ao abrir, sem carregar em nada
+(async()=>{if(!SR||!navigator.permissions)return;let pref=null;try{pref=localStorage.getItem('ecocell-mic')}catch(e){}if(pref==='0')return;
+ try{const p=await navigator.permissions.query({name:'microphone'});const liga=()=>{let pr=null;try{pr=localStorage.getItem('ecocell-mic')}catch(e){}if(p.state==='granted'&&!OUV.on&&pr!=='0'){OUV.on=true;OUV.erros=0;ouvInicia();micUI()}};liga();p.onchange=liga}catch(e){}})();
 
 if('serviceWorker' in navigator&&window.isSecureContext)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script></body></html>
