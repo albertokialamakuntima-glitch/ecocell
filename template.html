@@ -249,7 +249,12 @@ function airsGen(a,tit,nota){const A=D.airs;if(!a||!A)return `<p class="mut">Sem
  <p class="mut" style="font-size:12px">Em cima: anomalia anual (verde), tendência desta região (vermelho tracejado) e tendência global (cinzento), todas na mesma escala. Em baixo: quanto a região se afasta da tendência global. ${A.inst}.</p>`}
 function airsBlock(i,pais){return airsBlock0(i,pais)+(pais?valLinha(i):'')+selosLinha()}
 function airsBlock0(i,pais){const c=D.countries[i];return airsGen(c.air,pais?'Tendência do país: '+c.n:'Tendência NASA AIRS, '+D.airs.periodo[0].slice(0,4)+'–'+D.airs.periodo[1].slice(0,4),pais?'Média de todas as células do país: igual para todas as células dele.':'')}
-function airsCell(c){const A=D.airs;if(!A)return '';const a=D.airsC&&D.airsC[(Math.floor(c.lat)+.5)+','+c.lon],f=v=>(v>=0?'+':'')+v.toFixed(2);
+// séries do AIRS por bloco: ficheiro à parte (airs_celulas.json), pedido logo depois de a página abrir
+let AIRSOK=false,AIRSP=null;function airsCarrega(){return AIRSP||(AIRSP=fetch('airs_celulas.json').then(r=>r.ok?r.json():{}).catch(()=>({})).then(j=>{D.airsC=j;AIRSOK=true}))}
+addEventListener('load',()=>setTimeout(airsCarrega,800));
+function airsCell(c){const A=D.airs;if(!A)return '';
+ if(!AIRSOK){const k=c.lat+'|'+c.lon;airsCarrega().then(()=>{const e=document.getElementById('airsCw');if(e&&e.dataset.k===k)e.outerHTML=airsCell(c)});return `<div id="airsCw" data-k="${k}" style="opacity:.7;margin:8px 0">${L2('A carregar a série mensal do AIRS…','Loading the AIRS monthly series…')}</div>`}
+ const a=D.airsC&&D.airsC[(Math.floor(c.lat)+.5)+','+c.lon],f=v=>(v>=0?'+':'')+v.toFixed(2);
  if(!a)return '<h2 style="margin-top:14px">Tendência NASA AIRS desta célula</h2><p class="mut" style="font-size:13px">Sem série própria para esta célula (o cálculo por célula ainda não foi carregado, ou a célula não tem dados AIRS). Abaixo está a tendência do país.</p>';
  return `<h2 style="margin-top:14px">Tendência NASA AIRS desta célula</h2><p style="font-size:13px;margin:4px 0"><b>Quanto:</b> ${f(a.s)} ppb/ano (IC 95%: ${f(a.lo)} a ${f(a.hi)}).<br><b>Significativo?</b> ${a.sa?'Sim':'Não'} (q ${a.q<0.001?'< 0,001':'= '+a.q.toFixed(3)}, r₁ = ${a.r1}).<br><b>Face à média global</b> (${f(A.G)} ppb/ano): ${f(a.s-A.G)} ppb/ano, ${a.sr?'diferente':'não diferente'}.</p>${grafico({an:A.anos,se:a.se,s:a.s})}<p class="mut" style="font-size:12px">Célula AIRS de 1° que contém o centro desta célula. Mesmas escalas e legenda do gráfico do país.</p>`}
 function validBox(){const V=D.valid;if(!V)return '';const f=v=>(v>=0?'+':'')+v.toFixed(2).replace('.',','),n=v=>v.toFixed(2).replace('.',',');
@@ -597,6 +602,23 @@ glc.insertAdjacentHTML('afterend','<div class="gl zm" id="zm" hidden><button cla
 const glRw=p=>d3.geoArea({type:'Polygon',coordinates:p})>2*Math.PI?p.map(r=>r.slice().reverse()):p;
 const GFEAT=D.geo.features.map(f=>{const g=f.geometry;return{...f,geometry:{type:g.type,coordinates:g.type==='Polygon'?glRw(g.coordinates):g.coordinates.map(glRw)}}});
 const glp=d3.geoOrthographic().clipAngle(90).precision(0.6),GF=new Map(GFEAT.map(f=>[f.properties.i,f])),GCM=new Map(C.map(c=>[c.lat+'|'+c.lon,c]));
+// fronteiras pré-calculadas (longitude, seno e cosseno da latitude): desenhá-las assim é ~30x mais rápido do que com d3.geoPath em cada fotograma
+const GFI=new Map(GFEAT.map((f,n)=>[f,n])),GBR=GFEAT.map(f=>{const g=f.geometry,rs=g.type==='Polygon'?g.coordinates:g.coordinates.flat();return rs.map(r=>{const q=[r[0]];for(let j=1;j<r.length;j++){const a=r[j-1],b=r[j],m=Math.abs(b[0]-a[0])>180?1:Math.ceil(Math.max(Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1])));   // troços longos (ex.: fronteira EUA–Canadá) divididos a cada 1°
+  for(let s=1;s<m;s++)q.push([a[0]+(b[0]-a[0])*s/m,a[1]+(b[1]-a[1])*s/m]);q.push(b)}
+ const a=new Float32Array(q.length*3);q.forEach((p,j)=>{const la=p[1]*Math.PI/180;a[j*3]=p[0]*Math.PI/180;a[j*3+1]=Math.sin(la);a[j*3+2]=Math.cos(la)});return a})});
+function glLinhas(x,R,cx,cy,ok){const l0=GL.lon*Math.PI/180,f0=GL.lat*Math.PI/180,s0=Math.sin(f0),c0=Math.cos(f0);x.beginPath();
+ GBR.forEach((rs,n)=>{if(ok&&!ok(GFEAT[n]))return;rs.forEach(a=>{let on=false;for(let j=0;j<a.length;j+=3){const d=a[j]-l0,sf=a[j+1],cf=a[j+2],cd=Math.cos(d);
+  if(s0*sf+c0*cf*cd<=0){on=false;continue}const px=cx+R*cf*Math.sin(d),py=cy-R*(c0*sf-s0*cf*cd);on?x.lineTo(px,py):x.moveTo(px,py);on=true}})})}
+// projeção rápida de um ponto (radianos, seno e cosseno da latitude) -> [x,y,visível]; o que está atrás do globo fica na borda do disco
+function glPj(R,cx,cy){const l0=GL.lon*Math.PI/180,f0=GL.lat*Math.PI/180,s0=Math.sin(f0),c0=Math.cos(f0);return(l,sf,cf)=>{const d=l-l0,cd=Math.cos(d),u=cf*Math.sin(d),v=c0*sf-s0*cf*cd;
+ if(s0*sf+c0*cf*cd>0)return[cx+R*u,cy-R*v,1];const h=Math.hypot(u,v)||1;return[cx+R*u/h,cy-R*v/h,0]}}
+// contorno de um país: direto se estiver todo à vista; se cortar a borda do globo, usa o d3 (recorte exato)
+function glPoly(x,pj,n,P){const Q=[];for(const a of GBR[n]){const q=[];let vis=0,hid=0;for(let j=0;j<a.length;j+=3){const p=pj(a[j],a[j+1],a[j+2]);p[2]?vis=1:hid=1;q.push(p)}
+  if(vis&&hid){P(GFEAT[n]);return}if(vis)Q.push(q)}
+ Q.forEach(q=>{x.moveTo(q[0][0],q[0][1]);for(let j=1;j<q.length;j++)x.lineTo(q[j][0],q[j][1]);x.closePath()})}
+// bloco de 1° (centro lat/lon); só se tiver algum canto visível
+function glQ(x,pj,la,lo){const r=Math.PI/180,c=[[lo-.5,la-.5],[lo-.5,la+.5],[lo+.5,la+.5],[lo+.5,la-.5]].map(p=>pj(p[0]*r,Math.sin(p[1]*r),Math.cos(p[1]*r)));
+ if(!c.some(p=>p[2]))return;x.moveTo(c[0][0],c[0][1]);x.lineTo(c[1][0],c[1][1]);x.lineTo(c[2][0],c[2][1]);x.lineTo(c[3][0],c[3][1]);x.closePath()}
 const GST=(()=>{let s=7,r=()=>(s=(s*16807)%2147483647)/2147483647,a=[];for(let i=0;i<260;i++)a.push([r(),r(),r()*1.3+.3,r()*.6+.3]);return a})();
 const glCx=()=>innerWidth/2,glCy=()=>innerHeight*0.53,glR=()=>Math.min(innerWidth,innerHeight)*0.42*GL.k;
 const TI=new Image();TI.onload=()=>{try{const c=document.createElement('canvas');c.width=TI.naturalWidth;c.height=TI.naturalHeight;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(TI,0,0);TXI={w:c.width,h:c.height,d:x.getImageData(0,0,c.width,c.height).data};if(!TXS){TXS=TI;TXV++}flatImagery();GL.hq=false}catch(e){console.error(e)}};TI.src=EARTH_TEX;
@@ -627,26 +649,36 @@ const WG=(()=>{try{const g=glw.getContext('webgl2',{antialias:false,alpha:false}
  const sh=(t,s)=>{const o=g.createShader(t);g.shaderSource(o,s);g.compileShader(o);if(!g.getShaderParameter(o,g.COMPILE_STATUS))throw g.getShaderInfoLog(o);return o};
  const p=g.createProgram();g.attachShader(p,sh(g.VERTEX_SHADER,'#version 300 es\nin vec2 a;void main(){gl_Position=vec4(a,0.,1.);}'));
  g.attachShader(p,sh(g.FRAGMENT_SHADER,`#version 300 es
-precision highp float;uniform sampler2D T;uniform sampler2D O;uniform float OA;uniform vec3 C;uniform vec3 V;out vec4 o;const float PI=3.14159265;
+precision highp float;uniform sampler2D T;uniform sampler2D O;uniform float OA;uniform float OG;uniform vec3 C;uniform vec3 V;out vec4 o;const float PI=3.14159265;
 void main(){vec2 n=(gl_FragCoord.xy-C.xy)/C.z;float d=length(n);vec3 bg=vec3(2.,6.,15.)/255.;if(d>1.+1./C.z){o=vec4(bg,1.);return;}
  float nz=sqrt(max(0.,1.-d*d)),yy=n.y*V.y+nz*V.x,zz=-n.y*V.x+nz*V.y,lat=asin(clamp(yy,-1.,1.)),u=(atan(n.x,zz)+V.z)/(2.*PI)+.5,v=.5-lat/PI;
  float u1=fract(u),u2=fract(u+.5)-.5;vec3 c=texture(T,vec2(fwidth(u1)<=fwidth(u2)?u1:u2,v)).rgb;vec4 ov=texture(O,vec2(fract(u),v));c=mix(c,ov.rgb,ov.a*OA);   // sem costura na linha de data
+ if(OG>0.&&ov.a>.99){vec2 q=vec2(u*360.,v*180.),w=max(fwidth(q),1e-4),f=fract(q),e=min(f,1.-f)/w;c=mix(c,vec3(1.),(1.-clamp(min(e.x,e.y)/.8,0.,1.))*.5);}   // linhas finas entre os blocos
  c=c*(.6+.4*sqrt(nz))+pow(1.-nz,3.)*vec3(30.,70.,120.)/255.;o=vec4(mix(bg,c,clamp((1.-d)*C.z,0.,1.)),1.);}`));
  g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))throw g.getProgramInfoLog(p);g.useProgram(p);g.uniform1i(g.getUniformLocation(p,'T'),0);g.uniform1i(g.getUniformLocation(p,'O'),1);
  g.bindBuffer(g.ARRAY_BUFFER,g.createBuffer());g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),g.STATIC_DRAW);const al=g.getAttribLocation(p,'a');g.enableVertexAttribArray(al);g.vertexAttribPointer(al,2,g.FLOAT,false,0,0);
  const tO=g.createTexture();g.activeTexture(g.TEXTURE1);g.bindTexture(g.TEXTURE_2D,tO);g.texImage2D(g.TEXTURE_2D,0,g.RGBA,1,1,0,g.RGBA,g.UNSIGNED_BYTE,new Uint8Array(4));g.activeTexture(g.TEXTURE0);
- return{g,tO,ovVer:-1,uOA:g.getUniformLocation(p,'OA'),tx:g.createTexture(),an:g.getExtension('EXT_texture_filter_anisotropic'),uC:g.getUniformLocation(p,'C'),uV:g.getUniformLocation(p,'V'),max:g.getParameter(g.MAX_TEXTURE_SIZE),ver:-1}}
+ return{g,tO,ovVer:-1,uOA:g.getUniformLocation(p,'OA'),uOG:g.getUniformLocation(p,'OG'),tx:g.createTexture(),an:g.getExtension('EXT_texture_filter_anisotropic'),uC:g.getUniformLocation(p,'C'),uV:g.getUniformLocation(p,'V'),max:g.getParameter(g.MAX_TEXTURE_SIZE),ver:-1}}
  catch(e){console.warn('WebGL2 indisponível: globo desenhado por CPU',e);return null}})();
 if(WG)glc.style.background='transparent';   // deixa ver a camada WebGL por baixo
+// blocos do país (metano ou variável escolhida) como imagem 360×180 que a placa gráfica projeta no globo: milhares de blocos sem custo por fotograma
+let GLB={key:null};
+function glBlocos(){if(lvl<2||curC<0)return null;
+ const vb=layer==='v'&&typeof VAR!=='undefined'&&VAR&&typeof VPB!=='undefined'&&VPB&&VPB.i===curC&&VPB.v===VAR&&!VANIM.on;if(layer==='v'&&!vb)return null;
+ const key=vb?'v|'+VAR.id+'|'+curC:'m|'+curC;if(GLB.key===key)return GLB;
+ const c=document.createElement('canvas');c.width=360;c.height=180;const x=c.getContext('2d');
+ if(vb){x.globalAlpha=.9;x.drawImage(vCanvas(VAR),0,0);x.globalAlpha=1;VPB.L.forEach(b=>{x.clearRect(b.c,b.r,1,1);x.fillStyle=vZcor(VAR,b.z);x.fillRect(b.c,b.r,1,1)})}   // o resto do mapa da variável fica por baixo, sem grelha
+ else{const css=getComputedStyle(document.documentElement),cl=['--lo','--me','--hi'].map(v=>css.getPropertyValue(v).trim());C.forEach(k=>{if(k.ci!==curC)return;x.fillStyle=cl[k.lv];x.fillRect(Math.floor(k.lon+180),Math.floor(90-k.lat),1,1)})}
+ return GLB={key,can:c,oa:vb?.82:.62}}
 function wglDraw(cw,ch,dpr,R,cx,cy){if(!WG||!TXS)return false;const g=WG.g;g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,WG.tx);
  if(WG.ver!==TXV){let s=TXS;if((s.naturalWidth||s.width)>WG.max){const c=document.createElement('canvas');c.width=WG.max;c.height=WG.max/2;c.getContext('2d').drawImage(s,0,0,c.width,c.height);s=c}
   g.bindTexture(g.TEXTURE_2D,WG.tx);g.texImage2D(g.TEXTURE_2D,0,g.RGB,g.RGB,g.UNSIGNED_BYTE,s);g.generateMipmap(g.TEXTURE_2D);
   g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.LINEAR_MIPMAP_LINEAR);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MAG_FILTER,g.LINEAR);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_S,g.REPEAT);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE);
   if(WG.an)g.texParameterf(g.TEXTURE_2D,WG.an.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(8,g.getParameter(WG.an.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));WG.ver=TXV}
  const W2=Math.round(cw*dpr),H2=Math.round(ch*dpr);if(glw.width!==W2||glw.height!==H2){glw.width=W2;glw.height=H2}
- const vOn=typeof VAR!=='undefined'&&layer==='v'&&VAR;g.activeTexture(g.TEXTURE1);g.bindTexture(g.TEXTURE_2D,WG.tO);   // camada da variável escolhida
- if(vOn&&WG.ovVer!==VOVER){g.texImage2D(g.TEXTURE_2D,0,g.RGBA,g.RGBA,g.UNSIGNED_BYTE,vFonte());g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.NEAREST);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MAG_FILTER,g.NEAREST);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_S,g.REPEAT);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE);WG.ovVer=VOVER}
- g.uniform1f(WG.uOA,vOn?.82:0);g.activeTexture(g.TEXTURE0);
+ const vOn=typeof VAR!=='undefined'&&layer==='v'&&VAR,B=glBlocos();g.activeTexture(g.TEXTURE1);g.bindTexture(g.TEXTURE_2D,WG.tO);   // camada da variável escolhida (ou os blocos do país)
+ const ov=B?B.key:vOn?VOVER:null;if(ov!==null&&WG.ovVer!==ov){g.texImage2D(g.TEXTURE_2D,0,g.RGBA,g.RGBA,g.UNSIGNED_BYTE,B?B.can:vFonte());g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.NEAREST);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MAG_FILTER,g.NEAREST);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_S,g.REPEAT);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE);WG.ovVer=ov}
+ g.uniform1f(WG.uOA,B?B.oa:vOn?.82:0);g.uniform1f(WG.uOG,B?1:0);g.activeTexture(g.TEXTURE0);
  const la=GL.lat*Math.PI/180;g.viewport(0,0,W2,H2);g.uniform3f(WG.uC,cx*dpr,H2-cy*dpr,R*dpr);g.uniform3f(WG.uV,Math.sin(la),Math.cos(la),GL.lon*Math.PI/180);g.drawArrays(g.TRIANGLE_STRIP,0,4);return true}
 function glDraw(q){const cw=innerWidth,ch=innerHeight,dpr=Math.min(devicePixelRatio||1,2);if(glc.width!==Math.round(cw*dpr)||glc.height!==Math.round(ch*dpr)){glc.width=Math.round(cw*dpr);glc.height=Math.round(ch*dpr)}
  const x=glc.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);const R=glR(),cx=glCx(),cy=glCy(),gpu=wglDraw(cw,ch,dpr,R,cx,cy);
@@ -656,20 +688,21 @@ function glDraw(q){const cw=innerWidth,ch=innerHeight,dpr=Math.min(devicePixelRa
  if(R<Math.max(cw,ch)*1.1){const gr=x.createRadialGradient(cx,cy,R*.97,cx,cy,R*1.15);gr.addColorStop(0,'rgba(110,180,255,.55)');gr.addColorStop(1,'rgba(110,180,255,0)');x.fillStyle=gr;x.beginPath();x.arc(cx,cy,R*1.15,0,6.2832);x.fill()}
  if(gpu)x.restore();else if(TXI)glTexture(x,q,cw,ch,R,cx,cy);else{x.fillStyle='#1d4f8a';x.beginPath();x.arc(cx,cy,R,0,6.2832);x.fill()}
  glp.rotate([-GL.lon,-GL.lat]).scale(R).translate([cx,cy]);const P=d3.geoPath(glp,x),css=getComputedStyle(document.documentElement);
- if(layer==='t'){x.globalAlpha=.6;GFEAT.forEach(f=>{x.beginPath();P(f);x.fillStyle=fillOf(f);x.fill()});x.globalAlpha=1}
- if(layer==='c'&&D.gpm){x.globalAlpha=.85;D.gpm.cells.forEach(c=>{x.beginPath();P(glBox({lat:c[0],lon:c[1]}));x.fillStyle=gdv(c[2]);x.fill()});x.globalAlpha=1}
- x.beginPath();GFEAT.forEach(f=>P(f));x.strokeStyle='rgba(255,255,255,.42)';x.lineWidth=.7;x.stroke();
+ const pj=glPj(R,cx,cy),PF=f=>glPoly(x,pj,GFI.get(f),P),PB=(la,lo)=>glQ(x,pj,la,lo);   // versões rápidas de P(país) e P(bloco)
+ if(layer==='t'){x.globalAlpha=.6;GFEAT.forEach(f=>{x.beginPath();PF(f);x.fillStyle=fillOf(f);x.fill()});x.globalAlpha=1}
+ if(layer==='c'&&D.gpm){x.globalAlpha=.85;D.gpm.cells.forEach(c=>{x.beginPath();PB(c[0],c[1]);x.fillStyle=gdv(c[2]);x.fill()});x.globalAlpha=1}
+ glLinhas(x,R,cx,cy);x.strokeStyle='rgba(255,255,255,.42)';x.lineWidth=.7;x.stroke();
  if(lvl>=1&&cur>=0){const fora=f=>lvl===1?D.countries[f.properties.i].k!==cur:f.properties.i!==curC;   // escurece o que está fora do continente / país escolhido
-  x.beginPath();GFEAT.forEach(f=>{if(fora(f))P(f)});x.fillStyle='rgba(2,8,20,.5)';x.fill();
-  if(lvl===1){x.beginPath();GFEAT.forEach(f=>{if(!fora(f))P(f)});x.strokeStyle='rgba(255,255,255,.8)';x.lineWidth=1.1;x.stroke()}}
- if(lvl>=2&&curC>=0&&layer!=='v'){const f=GF.get(curC);if(f){x.beginPath();P(f);x.fillStyle='rgba(255,255,255,.06)';x.fill();
-   const cs=C.filter(c=>c.ci===curC),cl=['--lo','--me','--hi'].map(v=>css.getPropertyValue(v).trim());[0,1,2].forEach(l=>{x.beginPath();cs.forEach(c=>{if(c.lv===l)P(glBox(c))});x.globalAlpha=.62;x.fillStyle=cl[l];x.fill();x.globalAlpha=1;x.strokeStyle='rgba(0,0,0,.35)';x.lineWidth=.4;x.stroke()});
-   x.beginPath();P(f);x.strokeStyle='#fff';x.lineWidth=1.8;x.stroke();
-   if(lvl===3&&GL.cell){x.beginPath();P(glBox(GL.cell));x.strokeStyle='#fff';x.lineWidth=2.2;x.stroke()}}}
+  x.beginPath();x.arc(cx,cy,R,0,6.2832);GFEAT.forEach(f=>{if(!fora(f))PF(f)});x.fillStyle='rgba(2,8,20,.5)';x.fill('evenodd');   // a esfera menos a região escolhida
+  if(lvl===1){glLinhas(x,R,cx,cy,f=>!fora(f));x.strokeStyle='rgba(255,255,255,.8)';x.lineWidth=1.1;x.stroke()}}
+ if(lvl>=2&&curC>=0&&layer!=='v'){const f=GF.get(curC);if(f){x.beginPath();PF(f);x.fillStyle='rgba(255,255,255,.06)';x.fill();
+   const cs=C.filter(c=>c.ci===curC),cl=['--lo','--me','--hi'].map(v=>css.getPropertyValue(v).trim());if(!gpu)[0,1,2].forEach(l=>{x.beginPath();cs.forEach(c=>{if(c.lv===l)PB(c.lat,c.lon)});x.globalAlpha=.62;x.fillStyle=cl[l];x.fill();x.globalAlpha=1;x.strokeStyle='rgba(0,0,0,.35)';x.lineWidth=.4;x.stroke()});
+   x.beginPath();PF(f);x.strokeStyle='#fff';x.lineWidth=1.8;x.stroke();
+   if(lvl===3&&GL.cell){x.beginPath();PB(GL.cell.lat,GL.cell.lon);x.strokeStyle='#fff';x.lineWidth=2.2;x.stroke()}}}
  if(lvl>=2&&curC>=0&&layer==='v'&&typeof VPB!=='undefined'&&VPB&&VPB.i===curC&&VPB.v===VAR&&!VANIM.on){const f=GF.get(curC);   // blocos da variável no país (as mesmas zonas do mapa 2D)
-  [0,1,2,3,4].forEach(z=>{x.beginPath();VPB.L.forEach(b=>{if(b.z===z)P(glBox({lat:89.5-b.r,lon:b.c-179.5}))});x.globalAlpha=.85;x.fillStyle=vZcor(VAR,z);x.fill();x.globalAlpha=1;x.strokeStyle='rgba(255,255,255,.55)';x.lineWidth=.6;x.stroke()});
-  if(f){x.beginPath();P(f);x.strokeStyle='#fff';x.lineWidth=1.8;x.stroke()}
-  if(GL.vcel){x.beginPath();P(glBox(GL.vcel));x.strokeStyle='#fff';x.lineWidth=2.6;x.stroke()}}
+  if(!gpu)[0,1,2,3,4].forEach(z=>{x.beginPath();VPB.L.forEach(b=>{if(b.z===z)PB(89.5-b.r,b.c-179.5)});x.globalAlpha=.85;x.fillStyle=vZcor(VAR,z);x.fill();x.globalAlpha=1;x.strokeStyle='rgba(255,255,255,.55)';x.lineWidth=.6;x.stroke()});
+  if(f){x.beginPath();PF(f);x.strokeStyle='#fff';x.lineWidth=1.8;x.stroke()}
+  if(GL.vcel){x.beginPath();PB(GL.vcel.lat,GL.vcel.lon);x.strokeStyle='#fff';x.lineWidth=2.6;x.stroke()}}
  // nomes: continentes no mundo; países do continente ao abrir um continente; país escolhido + vizinhos ao abrir um país.
  // Só a face visível do globo, sem nomes sobrepostos (os países maiores têm prioridade) e sem rotular países demasiado pequenos no ecrã.
  x.textAlign='center';x.textBaseline='middle';const caixas=[],C0=[GL.lon,GL.lat];
