@@ -1133,7 +1133,12 @@ const vozes=()=>('speechSynthesis' in window?speechSynthesis.getVoices():[]).fil
 // estilo «locutor»: prefere vozes masculinas e fala com mais energia (um estilo, não a imitação de nenhuma pessoa)
 function notaVoz(v){const lg=LANG==='en'?'en':'pt',loc=BOT.estilo==='locutor';let s=0;if(!v.lang.toLowerCase().startsWith(lg))s-=4;if(lg==='pt'&&/pt[-_]pt/i.test(v.lang))s+=3;if(lg==='en'&&/en[-_](gb|us)/i.test(v.lang))s+=1;if(/natural|neural|online|premium|enhanced|wavenet/i.test(v.name))s+=8;if(/google/i.test(v.name))s+=9;
  if(VOZ_F[lg].test(v.name))s+=loc?-6:5;if(VOZ_M.test(v.name))s+=loc?10:-12;return s}
-function escolheVoz(){const vs=vozes();if(!vs.length)return null;return vs.find(v=>v.name===BOT.nomeVoz)||vs.slice().sort((a,b)=>notaVoz(b)-notaVoz(a))[0]}   /* a voz escolhida no menu ⚙ tem prioridade */
+// a lista de vozes chega aos poucos (no Edge as vozes «Natural» aparecem depois das locais): só fixamos a voz quando a lista
+// estiver estável há 2 s; a partir daí a Eco fala SEMPRE com a mesma voz (até mudar a língua ou escolher outra no menu ⚙)
+let VOZ_MUDOU=performance.now();if('speechSynthesis' in window){speechSynthesis.getVoices();speechSynthesis.addEventListener('voiceschanged',()=>{VOZ_MUDOU=performance.now()})}
+function escolheVoz(){const vs=vozes();if(!vs.length)return null;const m=vs.find(v=>v.name===BOT.nomeVoz);if(m)return m;   /* a voz escolhida no menu ⚙ tem prioridade */
+ if(BOT.vf&&BOT.vf.l===LANG){const f=vs.find(v=>v.name===BOT.vf.n);if(f)return f}
+ const b=vs.slice().sort((a,b)=>notaVoz(b)-notaVoz(a))[0];if(performance.now()-VOZ_MUDOU>2000)BOT.vf={n:b.name,l:LANG};return b}
 function avisoVoz(m){const a=$('#botAviso');if(!a)return;a.textContent=m;a.hidden=!m}
 /* --- vozes neurais Piper: abertas (licença MIT), treinadas com gravações de locutores reais e sintetizadas no próprio browser.
    Em português só existem vozes masculinas. Cada voz descarrega ~60 MB na primeira vez e fica guardada no browser.
@@ -1161,7 +1166,10 @@ async function dizPiper(t,id,voz){let blob;try{blob=await piperGera(t,voz)}catch
   a.play().catch(()=>{avisoVoz(L2('O browser bloqueou o som: carrega em qualquer sítio da página.','The browser blocked the sound: click anywhere on the page.'));sp.textContent=t;espera(Math.max(2200,t.length*62),id,1).then(acaba,acaba)})})}
 /* --- uma frase: o texto só começa a aparecer QUANDO a voz começa a falar (evento onstart) e avança palavra a palavra com ela.
    Se a voz estiver desligada, não arrancar em 1,5 s ou «acabar» cedo demais (erro do Chrome), o texto aparece ao ritmo de leitura. --- */
-function diz(t,id){const pv=BOT.voz&&piperVoz();if(pv)return dizPiper(t,id,pv);return new Promise(res=>{const box=$('#botTx'),bot=$('#bot');box.querySelectorAll('.fr').forEach(x=>x.classList.add('lida'));
+function diz(t,id){const pv=BOT.voz&&piperVoz();if(pv)return dizPiper(t,id,pv);
+ if(BOT.voz&&'speechSynthesis' in window&&!vozes().length&&!diz.esperou){diz.esperou=true;   // as vozes ainda não chegaram: espera por elas em vez de falar com a voz por defeito do browser
+  return new Promise(ok=>{let f=0;const go=()=>{if(!f){f=1;ok()}};speechSynthesis.addEventListener('voiceschanged',go,{once:true});setTimeout(go,1500)}).then(()=>diz(t,id))}
+ return new Promise(res=>{const box=$('#botTx'),bot=$('#bot');box.querySelectorAll('.fr').forEach(x=>x.classList.add('lida'));
  const sp=document.createElement('span');sp.className='fr';box.appendChild(sp);box.appendChild(document.createTextNode(' '));
  const temVoz=BOT.voz&&'speechSynthesis' in window,v=temVoz?escolheVoz():null,est=t.length*(BOT.mpc||62)/VEL;   /* BOT.mpc: milissegundos por letra medidos nesta voz, para a escrita acompanhar o ritmo real dela */let fim=false,bnd=false,i=0,comecou=false,t0=0;bot.classList.add('fala');
  const acaba=()=>{if(fim)return;fim=true;clearInterval(BOT.ti);sp.textContent=t;box.scrollTop=box.scrollHeight;bot.classList.remove('fala','escreve');res()};
@@ -1368,7 +1376,7 @@ function botEnd(){if(!BOT.on)return;BOT.on=false;BOT.run++;if('speechSynthesis' 
 $('#btnTour').onclick=()=>BOT.on?botEnd():botStart();$('#logo').onclick=()=>{if(!BOT.on)botStart()};$('#logo').title='Eco: visita guiada';$('#botAv').onclick=()=>{cara('f',1);botFesta(16)};
 $('#botSeg').onclick=()=>BOT.k===BOT_PASSOS.length-1?botEnd():botCorre(BOT.k+1);$('#botAnt').onclick=()=>botCorre(BOT.k-1);$('#botX').onclick=botEnd;
 $('#botCfg').onclick=e=>{e.stopPropagation();const m=$('#botMenu');m.hidden=!m.hidden;if(!m.hidden)menuVozes()};
-$('#botEst').onchange=e=>{BOT.estilo=e.target.value;try{localStorage.setItem('ecocell-estilo',BOT.estilo)}catch(x){}BOT.nomeVoz='';try{localStorage.removeItem('ecocell-voz-nome')}catch(x){}menuVozes()};   // muda o estilo e deixa a Eco escolher a melhor voz para ele
+$('#botEst').onchange=e=>{BOT.estilo=e.target.value;BOT.vf=null;try{localStorage.setItem('ecocell-estilo',BOT.estilo)}catch(x){}BOT.nomeVoz='';try{localStorage.removeItem('ecocell-voz-nome')}catch(x){}menuVozes()};   // muda o estilo e deixa a Eco escolher a melhor voz para ele
 $('#botVozSel2').onchange=e=>{BOT.nomeVoz=e.target.value;try{localStorage.setItem('ecocell-voz-nome',BOT.nomeVoz)}catch(x){}BOT.mpc=0;botBotoes();const pv=piperVoz();if(pv)piperGera(L2('Olá! Eu sou a Eco.','Hi! I am Eco.'),pv).catch(()=>{})};   // voz neural: começa já a descarregar   // vale a partir da frase seguinte
 $('#botTesta').onclick=()=>{const pv=piperVoz();if(pv){avisoVoz(L2('A preparar a voz…','Preparing the voice…'));piperGera(L2('Olá! Eu sou a Eco.','Hi! I am Eco.'),pv).then(b=>{avisoVoz('');const a=new Audio(URL.createObjectURL(b));BOT.aT=a;a.play()}).catch(()=>avisoVoz(L2('A voz neural não funcionou neste browser.','The neural voice did not work in this browser.')));return}
  if(!('speechSynthesis' in window))return;const v=escolheVoz();speechSynthesis.cancel();speechSynthesis.resume();const u=new SpeechSynthesisUtterance(L2('Olá! Eu sou a Eco.','Hi! I am Eco.'));if(v){u.voice=v;u.lang=v.lang}u.rate=(LANG==='en'?1:1.05)*VEL;BOT.uT=u;speechSynthesis.speak(u)};
@@ -1406,7 +1414,8 @@ const ICO_MIC='<svg viewBox="0 0 24 24"><path d="M12 15a3.5 3.5 0 003.5-3.5v-6a3
 document.body.insertAdjacentHTML('beforeend',`<button id="ecoMic" type="button">${ICO_MIC}<i></i><span></span></button>`);
 $('#botN').insertAdjacentHTML('beforebegin',`<div id="botOuv"></div><form id="botPerg" hidden autocomplete="off"><input id="botIn" type="text"><button class="b pri" type="submit" aria-label="Enviar"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4v6l12 2-12 2z"/></svg></button></form>`);
 function micUI(){const b=$('#ecoMic'),livre=OUV.on&&BOT.conv&&performance.now()<OUV.livre;b.classList.toggle('on',OUV.on);b.classList.toggle('livre',livre);
- b.querySelector('span').textContent=OUV.on?(livre?L2('A ouvir…','Listening…'):L2('Diz «Olá Eco»','Say «Hey Eco»')):L2('Olá Eco','Hey Eco');
+ const ouvi=OUV.on&&OUV.ouvi&&performance.now()<OUV.ouvi.ate?L2('Ouvi','Heard')+': «'+(OUV.ouvi.t.length>26?OUV.ouvi.t.slice(0,25)+'…':OUV.ouvi.t)+'»':'';
+ b.querySelector('span').textContent=ouvi||(OUV.on?(livre?L2('A ouvir…','Listening…'):L2('Diz «Olá Eco»','Say «Hey Eco»')):L2('Olá Eco','Hey Eco'));
  b.title=OUV.on?L2('A Eco está a ouvir. Diz «Olá Eco» ou «Hey Eco» e faz a tua pergunta. Carrega para desligar o microfone.','Eco is listening. Say «Hey Eco» and ask your question. Press to turn the microphone off.'):L2('Falar com a Eco por voz (liga o microfone)','Talk to Eco by voice (turns the microphone on)');
  if(BOT.conv){$('#botIn').placeholder=L2('Escreve uma pergunta…','Type a question…');if(!OUV.fala&&!$('#botOuv').dataset.q&&performance.now()-(OUV.tInt||0)>1500)$('#botOuv').textContent=OUV.on?(livre?'🎤 '+L2('Estou a ouvir: podes perguntar.','I am listening: go ahead.'):'🎤 '+L2('Diz «Olá Eco» para me perguntares outra coisa.','Say «Hey Eco» to ask me something else.')):''}}
 setInterval(micUI,1000);
@@ -1415,7 +1424,8 @@ const nrm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').repla
 const tem=(q,re)=>re.test(' '+q+' ');
 // «Hey Eco»: a saudação é opcional se «eco» abrir a frase; «ecocell» não conta
 // só «Olá Eco», «Oi Eco», «Ei Eco» (e «Hey Eco» no site em inglês): «eco» sozinho não acorda, para não disparar em conversas
-const WAKE=/^(?:.*?\b)?(?:ola|oi|ei|hei|hey|ey|hola|alo|hello|hi)\s+(?:eco|echo|eko|ecco|ekko|ecu|eco's)\b(.*)$/;
+// o reconhecimento de voz escreve «Olá» de muitas maneiras («olha», «ó lá», «alô», «olá»…) e «Eco» às vezes como «ecco», «echo», «ego», «é co»
+const WAKE=/^(?:.*?\b)?(?:ola|olla|olha|o la|oh la|ou la|oi|oie|ei|hei|hey|ey|hola|alo|allo|hello|hi)\s+(?:eco|ecco|echo|eko|ekko|ecu|ego|heco|e co|eco s|ecos)\b(.*)$/;
 const acordou=q=>{const m=q.match(WAKE);return m?m[1].trim():null};
 /* --- variáveis: palavras que as identificam (a ordem importa: «temperatura do mar» antes de «temperatura») --- */
 const VPAL=[['clor',/\b(clorofila|chlorophyll|fitoplancton|phytoplankton|algas|algae)\b/],['sst',/\b(temperatura (da agua )?do mar|temperatura do oceano|sea (surface )?temperature|ocean temperature|sst|mar|oceano|oceanos|sea|ocean|oceans)\b/],
@@ -1552,7 +1562,7 @@ async function contextoIA(q){const H=await histCarrega(),anos=v=>Array.from({len
    serie_anomalia_anual:Object.fromEntries(anos(v).map((y,k)=>[y,r3(v.glob.serie[k])])),paises_que_mais_sobem:top(v,0),paises_que_mais_descem:top(v,1)})),
   paises:[...ps].slice(0,4).map(i=>{const c=D.countries[i];return{nome:pNome(i),nome_en:c.en,tendencias_por_decada:Object.fromEntries(VD.filter(v=>v.paises[c.en]).map(v=>{const a=v.paises[c.en];return[v.id,{valor:r3(a[0]),ic95:[r3(a[1]),r3(a[2])],p:r3(a[3]),significativa:a[5]!==0}]}))}}),
   correlacao_series_globais:cor,historico:(H||[]).slice(-10),hoje_luanda:new Date(Date.now()+36e5).toISOString().slice(0,10)}}
-async function perguntaIA(t){const ctx=await contextoIA(nrm(t)),c=new AbortController(),to=setTimeout(()=>c.abort(),30000);
+async function perguntaIA(t){const ctx=await contextoIA(nrm(t)),c=new AbortController(),to=setTimeout(()=>c.abort(),60000);   // o Worker tenta até ~50 s
  try{const r=await fetch(IA.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pergunta:t,lang:LANG,contexto:JSON.stringify(ctx),historico:IA.hist}),signal:c.signal});
   const j=await r.json().catch(()=>({}));if(!r.ok||!j.resposta)throw new Error(j.erro||('HTTP '+r.status));return j}finally{clearTimeout(to)}}
 // a IA pode mexer no mapa: {tipo, valor}
@@ -1565,8 +1575,14 @@ async function pergunta(t){ecoAbre();const q=nrm(t),w=acordou(q),txt=w!==null?w:
  if(w!==null&&w.length<2)return ecoDiz(L2('Olá! Em que posso ajudar?','Hello! How can I help?'));
  const nq=nrm(txt),ordem=nq.split(' ').length<=6&&tem(nq,COMANDO),id0=++IA.n,simples=perguntaSimples(nq);
  if(IA.url&&!ordem&&!simples){$('#botQ').innerHTML='';$('#botTx').textContent=L2('A pensar…','Thinking…');cara('p');
-  try{const r=await perguntaIA(t);if(id0!==IA.n||!BOT.conv)return;aplicaAcoes(r.acoes);IA.hist.push({q:t,r:r.resposta});IA.hist=IA.hist.slice(-6);convTitulos();ecoDiz(r.resposta);return}
-  catch(e){console.warn('Eco IA indisponível; respondo com as regras',e);if(id0!==IA.n||!BOT.conv)return}}
+  // enquanto espera, a Eco explica o que se passa (em vez de ficar calada ou desistir)
+  const vivoQ=()=>id0===IA.n&&BOT.conv,avisos=[[5000,L2('É uma pergunta complexa: estou a analisar os dados, dá-me uns segundos.','That is a complex question: I am analysing the data, give me a few seconds.')],
+   [20000,L2('Ainda estou a pensar. A inteligência artificial está com muita procura neste momento, mas não desisti.','Still thinking. The artificial intelligence is very busy right now, but I have not given up.')]].map(([ms,s])=>setTimeout(()=>{if(vivoQ())ecoDiz(s)},ms));
+  try{const r=await perguntaIA(t);avisos.forEach(clearTimeout);if(!vivoQ())return;aplicaAcoes(r.acoes);IA.hist.push({q:t,r:r.resposta});IA.hist=IA.hist.slice(-6);convTitulos();ecoDiz(r.resposta);return}
+  catch(e){avisos.forEach(clearTimeout);console.warn('Eco IA não respondeu',e);if(!vivoQ())return;
+   // não troca a pergunta por outra coisa: diz a verdade e deixa tentar outra vez
+   const q=$('#botQ');q.innerHTML='';const b=document.createElement('button');b.className='b';b.type='button';b.textContent=L2('Tentar outra vez','Try again');b.onclick=()=>pergunta(t);q.appendChild(b);
+   ecoDiz(L2('Desculpa, a inteligência artificial não conseguiu responder agora, porque está com muita procura ou sem ligação. Carrega em «Tentar outra vez» ou repete a pergunta daqui a pouco.','Sorry, the artificial intelligence could not answer right now, because it is very busy or offline. Press «Try again» or repeat the question in a moment.'));return}}
  let r;try{r=responde(txt)}catch(e){console.error(e);r={t:L2('Desculpa, algo correu mal ao responder.','Sorry, something went wrong while answering.')}}
  if(r.chips)chips();else $('#botQ').innerHTML='';
  if(r.fim){ecoDiz(r.t).then(()=>ecoFecha());return}
@@ -1577,6 +1593,7 @@ async function pergunta(t){ecoAbre();const q=nrm(t),w=acordou(q),txt=w!==null?w:
 function ouvTexto(alts){const t=alts[0]||'';if(OUV.fala||performance.now()<OUV.ate)return;   // a Eco não se ouve a si própria
  const q=nrm(t);let w=null;for(const a of alts){w=acordou(nrm(a));if(w!==null)break}
  if(w!==null){pergunta(w.length>1?w:'olá eco');return}
+ if(!BOT.conv&&t.trim()){OUV.ouvi={t:t.trim(),ate:performance.now()+3000};micUI()}   // mostra no botão o que ouviu (ajuda a perceber porque não acordou)
  if(BOT.conv&&performance.now()<OUV.livre&&q.length>1)pergunta(t)}
 function ouvInicia(){if(!OUV.on||!SR)return;const r=new SR();r.lang=LANG==='en'?'en-US':'pt-PT';r.continuous=true;r.interimResults=true;r.maxAlternatives=3;
  r.onresult=e=>{for(let k=e.resultIndex;k<e.results.length;k++){const res=e.results[k];if(res.isFinal){OUV.erros=0;ouvTexto([...res].map(a=>a.transcript))}

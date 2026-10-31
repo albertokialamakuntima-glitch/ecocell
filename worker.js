@@ -93,19 +93,23 @@ export default {
     const falhas = [];
     // pensar pouco: os dados já vêm prontos no contexto, por isso a resposta sai muito mais depressa (GEMINI_THINKING muda o nível)
     const pensar = m => /2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: env.GEMINI_THINKING || 'minimal' };
+    // cada tentativa tem no máximo 12 s: se o Gemini ficar pendurado, a MESMA pergunta passa ao modelo seguinte
     const pede = (m, comPensar = true) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify(comPensar ? { ...corpo, generationConfig: { ...corpo.generationConfig, thinkingConfig: pensar(m) } } : corpo),
-    });
+      signal: AbortSignal.timeout(+(env.LIMITE_MS || 12000)),
+    }).catch(() => new Response('{}', { status: 504 }));
+    const inicio = Date.now();
     for (const m of MODELOS(env.GEMINI_MODEL)) {
+      if (Date.now() - inicio > 50000) { falhas.push('tempo esgotado'); break; }   // ao fim de 50 s pára de tentar: o site avisa e oferece «tentar outra vez»
       let r = await pede(m);
       if (r.status === 400) r = await pede(m, false);   // modelo que não aceita o nível de pensamento: pede sem ele
       if (r.status === 503 || r.status === 500) { await new Promise(ok => setTimeout(ok, 700)); r = await pede(m); }   // ocupado: mais uma tentativa
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
         const msg = (j.error && j.error.message) || `Gemini respondeu ${r.status}`;
-        if ([404, 429, 500, 503].includes(r.status)) { falhas.push(`${m}: ${r.status}`); continue; }   // passa ao modelo seguinte
+        if ([404, 429, 500, 503, 504].includes(r.status)) { falhas.push(`${m}: ${r.status}`); continue; }   // passa ao modelo seguinte
         return json({ erro: msg, estado: r.status }, 502);
       }
       const partes = (((j.candidates || [])[0] || {}).content || {}).parts || [];
