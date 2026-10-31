@@ -1571,8 +1571,37 @@ function aplicaAcoes(L){for(const a of (L||[])){const t=a.tipo,val=nrm(a.valor||
  else if(t==='pais'){let i=D.countries.findIndex(c=>nrm(c.en)===val||nrm(c.n)===val||nrm(PTNOME[c.en]||'')===val);if(i<0)i=acharPais(val);if(i>=0){go(i);OUV.ctx.p=i}}
  else if(t==='continente'){let k=CN.findIndex(c=>nrm(c.n)===val||nrm(CNEN[c.n]||'')===val);if(k<0)k=acharCont(val);if(k>=0)cont(k)}
  else if(t==='mundo')world();else if(t==='globo3d')glToggle(true);else if(t==='mapa2d')glToggle(false);else if(t==='parar_animacao')vAnimLiga(false)}catch(e){console.warn('ação da IA',a,e)}}}
+/* --- ordens básicas: feitas na hora, sem IA («amplia para Angola», «muda para 3D», «mostra a vegetação», «abre os métodos», «pode fechar») --- */
+const FIM_ECO=/\b(desativa\w*|desliga\w*|pode (ir|fechar|sair|desativar|desligar|parar)|ja nao preciso\w*|nao preciso (de )?mais|e tudo|e so isso|so isso|termina\w*|adeus|tchau|xau|ate logo|ate ja|bye|goodbye|that s all|thats all|turn off|stop listening|close eco|fecha a eco|fechar a eco|sai|sair)\b/;
+const VERBO=/\b(mostra\w*|abre|abrir|abra|abri|vai|vamos|ir|ve|ver|veja|volta\w*|regressa\w*|back|return|amplia\w*|aproxima\w*|zoom|muda\w*|passa\w*|poe|coloca\w*|seleciona\w*|escolhe\w*|liga|ativa|leva\w*|quero ver|fecha\w*|afasta\w*|reduz\w*|diminui\w*|show|open|go|switch|change|display|take me|zoom in|zoom out|close)\b/;
+const PERG=/\b(onde|quanto\w*|como esta\w*|porque|por que|compar\w*|qual|quais|where|how|why|which|what)\b/;
+const PAINEIS=[['g',/\b(gemeo\w*|digital twin|twin|simulador|simulacao|simulation|como funciona o eco ?cell)\b/,['o gémeo digital do EcoCell','the EcoCell digital twin']],['m',/\b(metodos|fontes|methods|sources)\b/,['os métodos e fontes','methods and sources']],
+ ['q',/\b(quando mudou|periodos|when did it change|aceleracao|acceleration)\b/,['«Quando mudou?»','«When did it change?»']],['e',/\b(onde aplicar|where to apply)\b/,['«Onde aplicar a EcoCell»','«Where to apply EcoCell»']],
+ ['t',/\b(tendencia nasa|tendencia do metano|methane trend)\b/,['a tendência do metano','the methane trend']],['n',/\b(niveis|levels)\b/,['os níveis','the levels']],
+ ['c',/\b(comparar dois paises|comparar paises|compare (two )?countries|modo comparar)\b/,['o comparador de países','the country comparison']],['v',/\b(painel das variaveis|lista (das|de) variaveis|todas as variaveis|variables panel|all variables)\b/,['as variáveis da Terra','the Earth variables']]];
+function comandoLocal(q){
+ if(tem(q,FIM_ECO)&&!tem(q,/\b(janela\w*|painel|paineis|window\w*|panel\w*)\b/))return{t:L2('Até já! Se precisares, diz «Olá Eco».','See you! If you need me, say «Hey Eco».'),fim:1,mic:tem(q,/\b(microfone|microphone|mic)\b/)};
+ if(!tem(q,VERBO))return null;
+ for(const [id,re,nm] of PAINEIS)if(tem(q,re)){if(id==='c')$('#btnCmp').click();else openWin(id,true);return{t:L2('Abri ','I opened ')+L2(...nm)+'.'}}
+ if(tem(q,/\b(fecha\w*|close)\b/)&&tem(q,/\b(janela\w*|painel|paineis|window\w*|panel\w*)\b/)){fechaJanelas();return{t:L2('Fechei as janelas.','I closed the windows.')}}
+ if(tem(q,PERG))return null;   // «mostra-me onde a vegetação sobe mais» é uma pergunta: vai para a resposta completa
+ if(tem(q,/\b(globo|globe|3d|tres d|three d)\b/)){glToggle(true);return{t:L2('Pronto, globo 3D.','Done, 3D globe.')}}
+ if(tem(q,/\b(2d|dois d|two d|mapa plano|flat map|plano|flat)\b/)){glToggle(false);return{t:L2('Pronto, mapa 2D.','Done, 2D map.')}}
+ const v=acharVar(q),i=acharPais(q),k=i<0?acharCont(q):-1;
+ if(v)varLiga(v.id);
+ if(i>=0){go(i);OUV.ctx={v:v||OUV.ctx.v,p:i};return{t:v?L2(`Aqui está ${vCurto(v)} ${emP(i)}.`,`Here is ${vCurto(v)} ${emP(i)}.`):L2(`Aqui está ${pNome(i)}.`,`Here is ${pNome(i)}.`)}}
+ if(k>=0){cont(k);OUV.ctx.p=-1;return{t:v?L2(`Aqui está ${vCurto(v)} na ${cNome(k)}.`,`Here is ${vCurto(v)} in ${cNome(k)}.`):L2(`Aqui está a ${cNome(k)}.`,`Here is ${cNome(k)}.`)}}
+ if(v){OUV.ctx.v=v;return{t:L2(`Aqui está ${vCurto(v)}.`,`Here is ${vCurto(v)}.`)}}
+ if(tem(q,/\b(mundo|world|tudo|inicio|home)\b/)){world();OUV.ctx.p=-1;return{t:L2('Aqui está o mundo inteiro.','Here is the whole world.')}}
+ const perto=tem(q,/\b(amplia\w*|aproxima\w*|zoom in|mais perto|closer)\b/),longe=tem(q,/\b(afasta\w*|reduz\w*|diminui\w*|zoom out|mais longe|further)\b/);
+ if(perto||longe){const f=perto?1.6:1/1.6;if(GL.on)glZoom(GL.lon,GL.lat,f);else svg.transition().duration(500).call(zoom.scaleBy,f);return{t:perto?L2('Aproximei.','Zoomed in.'):L2('Afastei.','Zoomed out.')}}
+ return null}
 async function pergunta(t){ecoAbre();const q=nrm(t),w=acordou(q),txt=w!==null?w:t;$('#botOuv').dataset.q='1';$('#botOuv').textContent='«'+(w!==null&&w?txt:t)+'»';setTimeout(()=>{delete $('#botOuv').dataset.q},4000);
- if(w!==null&&w.length<2)return ecoDiz(L2('Olá! Em que posso ajudar?','Hello! How can I help?'));
+ if(w!==null&&w.length<2)return ecoDiz(L2('Em que posso ajudar hoje?','How can I help you today?'));
+ const cmd=comandoLocal(nrm(txt));   // ordens básicas: na hora, sem IA
+ if(cmd){IA.n++;$('#botQ').innerHTML='';IA.hist.push({q:txt,r:cmd.t});IA.hist=IA.hist.slice(-6);convTitulos();
+  if(cmd.fim){ecoDiz(cmd.t).then(()=>{if(cmd.mic&&OUV.on){ouvLiga(false);try{localStorage.setItem('ecocell-mic','0')}catch(e){}}ecoFecha()});return}
+  ecoDiz(cmd.t);return}
  const nq=nrm(txt),ordem=nq.split(' ').length<=6&&tem(nq,COMANDO),id0=++IA.n,simples=perguntaSimples(nq);
  if(IA.url&&!ordem&&!simples){$('#botQ').innerHTML='';$('#botTx').textContent=L2('A pensar…','Thinking…');cara('p');
   // enquanto espera, a Eco explica o que se passa (em vez de ficar calada ou desistir)
@@ -1606,7 +1635,7 @@ function ouvInicia(){if(!OUV.on||!SR)return;const r=new SR();r.lang=LANG==='en'?
  OUV.rec=r;try{r.start()}catch(e){}}
 function ouvLiga(on){if(!SR){ecoAbre();ecoDiz(L2('Este browser não percebe voz. Usa o Google Chrome ou o Microsoft Edge, ou escreve a pergunta aqui em baixo.','This browser does not understand speech. Use Google Chrome or Microsoft Edge, or type your question below.'));return}
  OUV.on=on;OUV.erros=0;if(on){if('speechSynthesis' in window)try{speechSynthesis.cancel();speechSynthesis.resume();const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}   // desbloqueia a voz dentro do clique
-  ouvInicia();ecoAbre();ecoDiz(L2('Estou a ouvir! Diz «Olá Eco» e faz a tua pergunta. Por exemplo: «Olá Eco, como está o metano em Angola?»','I am listening! Say «Hey Eco» and ask your question. For example: «Hey Eco, how is methane in Angola?»'))}
+  ouvInicia();ecoAbre();ecoDiz(L2('Em que posso ajudar hoje?','How can I help you today?'))}
  else{const r=OUV.rec;OUV.rec=null;if(r)try{r.abort()}catch(e){}if(BOT.conv)ecoFecha()}   // desligar o microfone também cala e fecha a Eco
  micUI()}
 $('#ecoMic').onclick=()=>{ouvLiga(!OUV.on);try{localStorage.setItem('ecocell-mic',OUV.on?'1':'0')}catch(e){}};   // lembra a escolha: desligado fica desligado
