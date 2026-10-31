@@ -91,13 +91,16 @@ export default {
     };
 
     const falhas = [];
-    const pede = m => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
+    // pensar pouco: os dados já vêm prontos no contexto, por isso a resposta sai muito mais depressa (GEMINI_THINKING muda o nível)
+    const pensar = m => /2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: env.GEMINI_THINKING || 'minimal' };
+    const pede = (m, comPensar = true) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      body: JSON.stringify(corpo),
+      body: JSON.stringify(comPensar ? { ...corpo, generationConfig: { ...corpo.generationConfig, thinkingConfig: pensar(m) } } : corpo),
     });
     for (const m of MODELOS(env.GEMINI_MODEL)) {
       let r = await pede(m);
+      if (r.status === 400) r = await pede(m, false);   // modelo que não aceita o nível de pensamento: pede sem ele
       if (r.status === 503 || r.status === 500) { await new Promise(ok => setTimeout(ok, 700)); r = await pede(m); }   // ocupado: mais uma tentativa
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {

@@ -345,9 +345,9 @@ function perHTML(){const P=D.per;if(!P)return '<p class="mut">Sem dados de perí
  const svg=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto"><polygon points="${band}" fill="#1f7a4d" opacity=".22"/><line x1="${p}" x2="${w-8}" y1="${Y(0)}" y2="${Y(0)}" stroke="#9aa5a0"/>
  <polyline fill="none" stroke="#1f7a4d" stroke-width="2.2" points="${R.map(r=>X(r[0])+','+Y(r[1])).join(' ')}"/>${AA.map(n=>`<circle cx="${X(n[0])}" cy="${Y(n[1])}" r="3" fill="none" stroke="#1f7a4d" stroke-width="1.4"/>`).join('')}${NO.map(n=>`<circle cx="${X(n[0])}" cy="${Y(n[1])}" r="4" fill="#e6a117" stroke="#fff"/>`).join('')}
  ${[2005,2010,2015,2020,2025].map(a=>tx(X(a),h-10,a,'middle')).join('')}${[-5,0,5,10,15].map(v=>tx(2,Y(v)+3,v)).join('')}</svg>`;
- const fx=P.faixas,fk=Object.keys(fx),pk='2019-01 a 2026-08',a=P.aceleracao;
+ const fx=P.faixas,fk=Object.keys(fx),pk=ks[2],a=P.aceleracao;   // o período recente muda com os dados (ex.: «2019-01 a 2026-08»)
  return `<p style="font-size:13px"><b>O que muda?</b> O metano global sobe e <b>acelera</b>: o ritmo aumenta ${f(a.valor)} ppb/ano em cada ano (IC 95%: ${f(a.lo)} a ${f(a.hi)}), ${a.significativa?'significativo':'não significativo'}.</p>
- <p style="font-size:12px;margin:6px 0"><b>Selos de verificação:</b> subida global ${seal(SL().g)} · aceleração ${seal(SL().a)} · diferenças regionais ${seal(SL().r)}</p><table><tr><th>Período</th><th>ppb/ano</th><th>IC 95%</th></tr>${ks.map(k=>`<tr><td>${k.replace(' a ',' → ')}</td><td><b>${f(G[k].slope)}</b></td><td>${f(G[k].lo)} a ${f(G[k].hi)}</td></tr>`).join('')}</table>
+ ${[SL().g,SL().a,SL().r].some(x=>x!=='na')?`<p style="font-size:12px;margin:6px 0"><b>Selos de verificação:</b> subida global ${seal(SL().g)} · aceleração ${seal(SL().a)} · diferenças regionais ${seal(SL().r)}</p>`:''}<table><tr><th>Período</th><th>ppb/ano</th><th>IC 95%</th></tr>${ks.map(k=>`<tr><td>${k.replace(' a ',' → ')}</td><td><b>${f(G[k].slope)}</b></td><td>${f(G[k].lo)} a ${f(G[k].hi)}</td></tr>`).join('')}</table>
  ${serieGlobal()}<h2 style="margin-top:14px">Quando? Tendência em janelas de 5 anos</h2>${svg}
  <p class="mut" style="font-size:12px">Verde: AIRS (NASA), com intervalo de 95%. Círculos verdes: crescimento anual do AIRS (ruidoso de ano para ano).${D.noaa?' Pontos laranja: crescimento anual da NOAA à superfície.':''}</p>${noaaBox()}
  <p style="font-size:13px">O AIRS mostra um ritmo de 4 a 5 ppb/ano até 2018, uma subida forte em 2019–2022 (pico de cerca de +11,6 ppb/ano em janelas centradas em 2021) e depois abrandamento. <b>Limites:</b> o AIRS mede a troposfera média (cerca de 400 hPa), que reage às emissões à superfície com atraso e amortecimento, e nas últimas janelas o intervalo inclui o zero, por isso o fim da série é pouco fiável.</p>
@@ -549,10 +549,63 @@ $('#info').addEventListener('click',e=>{const t=e.target.closest('button');if(!t
 pwUI();
 function twBind(){$('#twin').innerHTML=twInputs();document.querySelectorAll('#twin input[type=range]').forEach(i=>i.oninput=()=>{const sc=+i.dataset.sc;twSet(i.dataset.s,i.dataset.k,+i.value,sc);i.nextElementSibling.textContent=(+i.value).toFixed(+i.step<1?2:0);document.querySelectorAll('#twpre button').forEach(b=>b.classList.remove('on'));TW.sc='';twRun()});
  const cv=$('#twconv');if(cv)cv.onchange=()=>{TW.p.conv=cv.checked;twRun()}}
-function twInit(){$('#pg').innerHTML=`<p class="warn">${fa('triangle-exclamation')} Simulação com hipóteses de demonstração. O desempenho do EcoCell ainda não foi validado experimentalmente; os resultados não são medições.</p><p style="font-size:13px">Muda os parâmetros e vê os resultados mudarem. O motor é o mesmo do código Python (ecocell_model.py), validado por testes.</p>
- <label class="ig"><span>Estes valores vêm de medições reais desta fonte</span><input type="checkbox" id="twreal"></label><div id="twpre"><button class="b" data-sc="referencia">Referência (sem EcoCell)</button> <button class="b on" data-sc="conservador">EcoCell conservador</button> <button class="b" data-sc="otimizado">EcoCell otimizado</button></div><div id="twin"></div><div id="twout"></div><div id="twcmp"></div>`;
+/* ===== «Como funciona o EcoCell»: animação das etapas do artigo (Makuntima et al., «Integrated carbon capture and clean energy generation systems») ===== */
+const COMO=[
+ {t:['Captura','Capture'],d:['O gás das chaminés, flares e geradores, rico em metano (CH₄) e dióxido de carbono (CO₂), é desviado por uma linha de 1 polegada. No protótipo, veio do gerador de 2000 kVA do ISPTEC.','Gas from stacks, flares and generators, rich in methane (CH₄) and carbon dioxide (CO₂), is diverted through a 1-inch line. In the prototype it came from the ISPTEC 2000 kVA generator.']},
+ {t:['Limpeza','Cleaning'],d:['Um filtro de carvão ativado (feito de casca de coco) e uma lavagem com NaOH tiram fumos, enxofre e humidade. Membranas seletivas separam o CH₄ e o CO₂ do resto do gás.','An activated-carbon filter (made from coconut shells) and an NaOH scrubber remove fumes, sulphur and moisture. Selective membranes separate CH₄ and CO₂ from the rest of the gas.']},
+ {t:['Biorreator','Bioreactor'],d:['A bactéria Methylococcus capsulatus come o metano e fixa CO₂. Ao fazê-lo liberta eletrões e forma metanol e biomassa rica em proteína.','The bacterium Methylococcus capsulatus eats methane and fixes CO₂. In doing so it releases electrons and forms methanol and protein-rich biomass.']},
+ {t:['Eletricidade','Electricity'],d:['Os eletrões passam do ânodo para o cátodo por um fio: é uma pilha microbiana. Cada célula dá cerca de 0,8 V; várias em série passam dos 2,2 V. Parte da energia fica numa bateria.','Electrons flow from the anode to the cathode through a wire: a microbial fuel cell. Each cell gives about 0.8 V; several in series exceed 2.2 V. Part of the energy is stored in a battery.']},
+ {t:['Hidrogénio verde','Green hydrogen'],d:['A eletricidade da própria pilha parte a água (eletrólise) em hidrogénio verde (H₂) e oxigénio (O₂), sem usar a rede elétrica.','The cell’s own electricity splits water (electrolysis) into green hydrogen (H₂) and oxygen (O₂), without using the grid.']},
+ {t:['Amónia','Ammonia'],d:['O H₂ junta-se ao azoto do ar: N₂ + 3H₂ → 2NH₃. A amónia guarda e transporta a energia com segurança e serve para fertilizantes.','The H₂ combines with nitrogen from the air: N₂ + 3H₂ → 2NH₃. Ammonia stores and transports the energy safely and is used for fertilisers.']},
+ {t:['Inteligência artificial','Artificial intelligence'],d:['Sensores e IA vigiam a temperatura, o pH, o caudal de gás, a atividade das bactérias e a corrente, e ajustam o sistema para render mais e não parar.','Sensors and AI watch temperature, pH, gas flow, bacterial activity and current, and adjust the system to perform better and avoid stoppages.']}];
+let COMO_K=0,COMO_TI=0;
+function comoSVG(){const an=!reduzir(),box=(i,x,y,ic)=>`<g class="cst" data-k="${i}" transform="translate(${x},${y})" style="cursor:pointer"><rect x="-48" y="-34" width="96" height="68" rx="12"/>${ic}<text y="27" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor">${i+1}. ${L2(...COMO[i].t)}</text></g>`,
+ mv=(id,dur,col,n,r)=>an?Array.from({length:n},(_,k)=>`<circle r="${r}" fill="${col}"><animateMotion dur="${dur}s" begin="${-k*dur/n}s" repeatCount="indefinite"><mpath href="#${id}"/></animateMotion></circle>`).join(''):'',
+ sobe=(x,y,col,d)=>an?`<circle cx="${x}" cy="${y}" r="2.6" fill="${col}"><animate attributeName="cy" from="${y}" to="${y-22}" dur="${d}s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="${d}s" repeatCount="indefinite"/></circle>`:'';
+ return `<svg viewBox="0 0 560 250" style="width:100%;height:auto;display:block" role="img" aria-label="${L2('Esquema do EcoCell','EcoCell diagram')}">
+ <defs><path id="cg1" d="M98 60 H142"/><path id="cg2" d="M238 60 H272"/><path id="ce1" d="M368 60 H412"/><path id="ce2" d="M460 94 V146"/><path id="ch2" d="M412 180 H368"/></defs>
+ <g fill="none" stroke-width="5" stroke-linecap="round"><path d="M98 60 H142" stroke="#c9822b" opacity=".55"/><path d="M238 60 H272" stroke="#c9822b" opacity=".55"/><path d="M368 60 H412" stroke="#e8c547" opacity=".6"/><path d="M460 94 V146" stroke="#e8c547" opacity=".6"/><path d="M412 180 H368" stroke="#5aa9e6" opacity=".6"/></g>
+ <g fill="none" stroke="#8fd3ff" stroke-width="1.2" stroke-dasharray="3 4" opacity=".55"><path d="M110 180 C150 120 170 110 190 96"/><path d="M158 180 C240 150 280 120 320 96"/><path d="M158 186 C260 220 380 220 420 206"/></g>
+ ${mv('cg1',2.2,'#ff9b3d',4,3)}${mv('cg2',1.8,'#ff9b3d',3,3)}${mv('ce1',1.2,'#ffe066',4,2.6)}${mv('ce2',1.2,'#ffe066',3,2.6)}${mv('ch2',2,'#7cc6ff',3,3)}
+ ${box(0,50,60,`<rect x="-26" y="-14" width="12" height="30" fill="#7b8794"/><rect x="-6" y="-4" width="26" height="20" fill="#5d6873"/>${sobe(-20,-16,'#b8b8b8',2.2)}${sobe(-17,-12,'#9aa',2.8)}`)}
+ ${box(1,190,60,`<path d="M-24 -18 H24 L8 4 V16 H-8 V4 Z" fill="#3d6b5a" stroke="#8fd3b0" stroke-width="1.2"/><path d="M-16 -10 H16 M-10 -3 H10" stroke="#1b2a24" stroke-width="2.5"/>`)}
+ ${box(2,320,60,`<rect x="-26" y="-20" width="52" height="38" rx="6" fill="#16463a" stroke="#4cc38a" stroke-width="1.2"/>${[[-14,-8],[2,-12],[14,2],[-6,6],[10,-2]].map(([x,y],k)=>`<ellipse cx="${x}" cy="${y}" rx="5" ry="2.8" fill="#7be0a8">${an?`<animateTransform attributeName="transform" type="rotate" values="0 ${x} ${y};25 ${x} ${y};0 ${x} ${y}" dur="${1.6+k*.3}s" repeatCount="indefinite"/>`:''}</ellipse>`).join('')}<text x="18" y="-10" font-size="9" fill="#ffe066" font-weight="700">e⁻</text>`)}
+ ${box(3,460,60,`<path d="M4 -22 L-10 2 H0 L-4 20 L12 -6 H2 Z" fill="#ffd23f"/>`)}
+ ${box(4,460,180,`<path d="M-16 -18 V12 a4 4 0 0 0 4 4 H12 a4 4 0 0 0 4 -4 V-18" fill="#1d3b57" stroke="#7cc6ff" stroke-width="1.2"/>${sobe(-6,10,'#bfe6ff',1.6)}${sobe(4,12,'#bfe6ff',2.1)}${sobe(-1,8,'#ffffff',1.3)}<text x="-26" y="-8" font-size="9" fill="#7cc6ff" font-weight="700">H₂</text>`)}
+ ${box(5,320,180,`<circle r="9" fill="#5b7bd5"/><text y="4" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">N</text>${[[-17,-8],[17,-8],[0,16]].map(([x,y])=>`<line x1="0" y1="0" x2="${x*.6}" y2="${y*.6}" stroke="#ccd" stroke-width="2"/><circle cx="${x}" cy="${y}" r="6" fill="#e9eef7"/><text x="${x}" y="${y+3}" text-anchor="middle" font-size="7.5" fill="#333" font-weight="700">H</text>`).join('')}`)}
+ ${box(6,130,180,`<rect x="-15" y="-15" width="30" height="30" rx="4" fill="#24364a" stroke="#8fd3ff" stroke-width="1.2"/><text y="4" text-anchor="middle" font-size="10" fill="#8fd3ff" font-weight="800">${L2('IA','AI')}</text>${[-9,0,9].map(v=>`<path d="M${v} -15 V-21 M${v} 15 V21 M-15 ${v} H-21 M15 ${v} H21" stroke="#8fd3ff" stroke-width="1.5"/>`).join('')}`)}
+ <text x="20" y="118" font-size="9.5" fill="currentColor" opacity=".75">${L2('Entra: CH₄ + CO₂ (+ água e ar)','In: CH₄ + CO₂ (+ water and air)')}</text>
+ <text x="540" y="244" font-size="9.5" fill="currentColor" opacity=".75" text-anchor="end">${L2('Sai: eletricidade, H₂ verde, NH₃, metanol, proteína','Out: electricity, green H₂, NH₃, methanol, protein')}</text></svg>`}
+function comoPasso(k){COMO_K=(k+COMO.length)%COMO.length;const c=COMO[COMO_K];document.querySelectorAll('#ecoComo .cst').forEach(g=>g.classList.toggle('on',+g.dataset.k===COMO_K));
+ const t=$('#comoTx');if(t)t.innerHTML=`<b>${COMO_K+1}. ${L2(...c.t)}</b> ${L2(...c.d)}`;document.querySelectorAll('#comoDots button').forEach((b,i)=>b.classList.toggle('on',i===COMO_K))}
+function comoHTML(){const f=(v,d)=>fmtA(v,d),E=[[45,'#4cc38a',L2('metabolismo das bactérias','bacterial metabolism')],[32,'#5aa9e6',L2('eletrólise (H₂)','electrolysis (H₂)')],[13,'#e8c547',L2('bateria','battery')],[10,'#9aa5a0',L2('sensores e controlo','sensors and control')]];
+ return `<h2 style="margin-top:0">${L2('Como funciona o EcoCell','How EcoCell works')}</h2>
+ <p style="font-size:13px;margin:4px 0 8px">${L2('O EcoCell é uma pilha de combustível híbrida e inteligente: bactérias comem o metano e o CO₂ das emissões industriais e, em troca, dão eletricidade, que produz hidrogénio verde e amónia.','EcoCell is an intelligent hybrid fuel cell: bacteria eat the methane and CO₂ from industrial emissions and, in return, give electricity, which produces green hydrogen and ammonia.')}</p>
+ <div class="comoBox">${comoSVG()}</div><div id="comoDots">${COMO.map((c,i)=>`<button class="b" type="button" data-k="${i}" title="${L2(...c.t)}">${i+1}</button>`).join('')}</div><p id="comoTx" style="font-size:13px;min-height:3.2em;margin:6px 0 10px"></p>
+ <h2>${L2('Os números da simulação (artigo, simulador BioElec)','The simulation numbers (paper, BioElec simulator)')}</h2>
+ <p class="mut" style="font-size:12px;margin:2px 0 6px">${L2('Reator de 1 L durante 150 h, com gás típico de uma refinaria angolana: 20 % de CH₄, 70 % de CO₂, 10 m³/h, 48 °C, pH 6,8.','1 L reactor over 150 h, with typical Angolan refinery gas: 20% CH₄, 70% CO₂, 10 m³/h, 48 °C, pH 6.8.')}</p>
+ <table><tr><td>${L2('Corrente elétrica (pico)','Electric current (peak)')}</td><td><b>${f(14.8,1)} A/m²</b></td></tr><tr><td>${L2('Hidrogénio verde acumulado','Green hydrogen accumulated')}</td><td><b>${f(0.495,3)} mmol</b> (~11 mL)</td></tr><tr><td>${L2('Amónia','Ammonia')}</td><td><b>${f(0.198,3)} mmol</b></td></tr><tr><td>${L2('Biomassa final (proteína)','Final biomass (protein)')}</td><td><b>${f(0.97,2)} g/L</b></td></tr><tr><td>${L2('Tensão da célula','Cell voltage')}</td><td><b>${f(1.25,2)} V</b> (${L2('mínimo para a eletrólise','minimum for electrolysis')}: ${f(1.23,2)} V)</td></tr><tr><td>${L2('Eficiência faradaica','Faradaic efficiency')}</td><td><b>~20 %</b></td></tr></table>
+ <p style="font-size:12.5px;margin:10px 0 4px"><b>${L2('Para onde vai a energia produzida','Where the energy produced goes')}</b></p>
+ <div style="display:flex;height:16px;border-radius:8px;overflow:hidden">${E.map(e=>`<span style="width:${e[0]}%;background:${e[1]}" title="${e[2]}: ${e[0]} %"></span>`).join('')}</div>
+ <p class="mut" style="font-size:12px;margin:4px 0 10px">${E.map(e=>`<span style="white-space:nowrap"><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${e[1]};margin-right:4px"></i>${e[2]} ${e[0]} %</span>`).join(' · ')}</p>
+ <p style="font-size:12.5px"><b>${L2('Onde está o projeto:','Where the project stands:')}</b> ${L2('prova de conceito em laboratório, com lodo anaeróbio da Ponte Molhada (Luanda) no lugar da bactéria e gases reais do gerador do ISPTEC; com várias células em série viram-se bolhas de hidrogénio. Ainda falta validar com a Methylococcus capsulatus: o maior desafio é passar os eletrões das bactérias para o elétrodo, porque esta bactéria não é naturalmente eletroativa.','laboratory proof of concept, with anaerobic sludge from Ponte Molhada (Luanda) in place of the bacterium and real exhaust gas from the ISPTEC generator; with several cells in series, hydrogen bubbles were seen. Validation with Methylococcus capsulatus is still pending: the biggest challenge is moving electrons from the bacteria to the electrode, because this bacterium is not naturally electroactive.')}</p>
+ <p style="font-size:12.5px"><b>${L2('Como o mapa ajuda:','How the map helps:')}</b> ${L2('o metano medido pelo satélite AIRS da NASA mostra onde há mais metano e onde está a subir, para escolher onde instalar o EcoCell primeiro, por exemplo junto de refinarias e flares.','methane measured by NASA’s AIRS satellite shows where there is more methane and where it is rising, to choose where to install EcoCell first, for example near refineries and flares.')}</p>
+ <p style="font-size:12.5px">${L2('Simulador completo do artigo','Full simulator from the paper')}: <a href="https://bioreactor-blue.vercel.app/" target="_blank" rel="noopener">bioreactor-blue.vercel.app</a></p><hr style="border:0;border-top:1px solid rgba(127,127,127,.3);margin:14px 0">`}
+function comoMostra(){const el=$('#ecoComo');if(!el)return;el.innerHTML=comoHTML();
+ el.querySelectorAll('.cst,#comoDots button').forEach(b=>b.onclick=()=>{clearInterval(COMO_TI);COMO_TI=0;comoPasso(+b.dataset.k)});comoPasso(COMO_K);
+ clearInterval(COMO_TI);COMO_TI=setInterval(()=>{if(!$('#w-g').classList.contains('on')){clearInterval(COMO_TI);COMO_TI=0;return}comoPasso(COMO_K+1)},5000)}   // avança sozinha enquanto a janela está aberta
+function twTextos(){const s=$('#twAdvS');if(s)s.textContent=L2('Modo avançado: ajustar os parâmetros (só se tiveres medições reais)','Advanced mode: adjust the parameters (only if you have real measurements)');
+ const e=$('#twExp');if(e)e.innerHTML=L2('<b>Referência</b>: o que se emite sem EcoCell. <b>Conservador</b>: o EcoCell com hipóteses cautelosas. <b>Otimizado</b>: o EcoCell com hipóteses favoráveis. Escolhe um cenário e vê os resultados em baixo.','<b>Reference</b>: what is emitted without EcoCell. <b>Conservative</b>: EcoCell with cautious assumptions. <b>Optimised</b>: EcoCell with favourable assumptions. Pick a scenario and see the results below.');
+ const h=$('#twH');if(h)h.textContent=L2('Experimenta: gémeo digital','Try it: digital twin')}
+$('#btnLang').addEventListener('click',()=>setTimeout(()=>{if(twDone){comoMostra();twTextos()}},90));
+function twInit(){$('#pg').innerHTML=`<div id="ecoComo"></div><h2 id="twH"></h2><p class="warn">${fa('triangle-exclamation')} Simulação com hipóteses de demonstração. O desempenho do EcoCell ainda não foi validado experimentalmente; os resultados não são medições.</p>
+ <div id="twpre"><button class="b" data-sc="referencia">Referência (sem EcoCell)</button> <button class="b on" data-sc="conservador">EcoCell conservador</button> <button class="b" data-sc="otimizado">EcoCell otimizado</button></div><p id="twExp" style="font-size:12.5px;margin:6px 0"></p>
+ <details id="twAdv"><summary id="twAdvS"></summary><p style="font-size:12.5px">Muda os parâmetros e vê os resultados mudarem. O motor é o mesmo do código Python (ecocell_model.py), validado por testes.</p><label class="ig"><span>Estes valores vêm de medições reais desta fonte</span><input type="checkbox" id="twreal"></label><div id="twin"></div></details><div id="twout"></div><div id="twcmp"></div>`;
+ comoMostra();twTextos();
  twBind();$('#twreal').onchange=e=>{TW.real=e.target.checked};document.querySelectorAll('#twpre button').forEach(b=>b.onclick=()=>{TW.sc=b.dataset.sc;TW.p=Object.assign({},ECO.P0,ECO.SC[TW.sc]);document.querySelectorAll('#twpre button').forEach(x=>x.classList.toggle('on',x===b));twBind();twRun()});twRun()}
-let twDone=false;const _ow=openWin;openWin=function(id,on){_ow(id,on);if(id==='g'&&$('#w-g').classList.contains('on')&&!twDone){twDone=true;twInit()}};
+let twDone=false;const _ow=openWin;openWin=function(id,on){_ow(id,on);if(id==='g'&&$('#w-g').classList.contains('on')){if(!twDone){twDone=true;twInit()}else if(!COMO_TI)comoMostra()}};   // ao reabrir, a animação recomeça
+document.head.insertAdjacentHTML('beforeend',`<style>#ecoComo .cst rect:first-child{fill:rgba(127,127,127,.12);stroke:rgba(127,127,127,.45);stroke-width:1.2;transition:all .3s}#ecoComo .cst.on rect:first-child{fill:rgba(76,195,138,.2);stroke:#4cc38a;stroke-width:2.5}
+#ecoComo .comoBox{background:rgba(127,127,127,.07);border-radius:12px;padding:6px}#comoDots{display:flex;gap:4px;justify-content:center;margin-top:6px}#comoDots button{padding:3px 9px;font-size:12px;min-width:28px}#comoDots button.on{background:var(--acc);color:#fff;border-color:var(--acc)}</style>`);
 
 /* ===== Motor de prioridade (porta do recommendation_engine.py) ===== */
 function pctl(a,q){const s=a.slice().sort((x,y)=>x-y),i=(s.length-1)*q,l=Math.floor(i),h=Math.ceil(i);return s[l]+(s[h]-s[l])*(i-l)}
@@ -1118,7 +1171,8 @@ function diz(t,id){const pv=BOT.voz&&piperVoz();if(pv)return dizPiper(t,id,pv);r
  if(!temVoz){escreve();leitura().then(acaba,acaba);return}
  // sem voz instalada para a língua: deixa o browser escolher pela língua (melhor do que ficar em silêncio)
  const u=new SpeechSynthesisUtterance(t);if(v)u.voice=v;u.lang=v?v.lang:(LANG==='en'?'en-GB':'pt-PT');u.rate=Math.max(.6,Math.min(2,(LANG==='en'?1:1.05)*VEL*(BOT.estilo==='locutor'?1.12:1)));u.pitch=BOT.estilo==='locutor'?.95:1.05;BOT.u=u;   // guardar a referência: o Chrome perde os eventos se a frase for recolhida da memória
- u.onstart=()=>{BOT.ouviu=true;avisoVoz('');if(comecou){comecou=false;bnd=false;i=0;sp.textContent=''}escreve()};   // se o texto já tinha começado sem a voz, recomeça junto com ela
+ u.onstart=()=>{if(id!==BOT.run||!BOT.on){speechSynthesis.cancel();return}   // a Eco já foi fechada ou mudou de frase: cala-se logo
+  BOT.ouviu=true;avisoVoz('');if(comecou){comecou=false;bnd=false;i=0;sp.textContent=''}escreve()};   // se o texto já tinha começado sem a voz, recomeça junto com ela
  u.onboundary=e=>{if(e.name&&e.name!=='word')return;escreve();bnd=true;const w=(t.slice(e.charIndex).match(/^\S+/)||[''])[0];sp.textContent=t.slice(0,e.charIndex+(e.charLength||w.length));box.scrollTop=box.scrollHeight};
  u.onend=()=>{bot.classList.remove('fala');const dt=performance.now()-t0;if(comecou&&dt>est*.35&&t.length>25)BOT.mpc=BOT.mpc?(BOT.mpc*.6+dt*VEL/t.length*.4):dt*VEL/t.length;if(comecou&&dt>est*.35)acaba();else{escreve();leitura().then(acaba,acaba)}};
  u.onerror=e=>{bot.classList.remove('fala');if(e.error&&!/interrupted|canceled/.test(e.error))avisoVoz(L2('A voz falhou neste browser','The voice failed in this browser')+` (${e.error}). `+L2('Experimenta o Microsoft Edge ou o Google Chrome.','Try Microsoft Edge or Google Chrome.'));escreve();leitura().then(acaba,acaba)};
@@ -1360,7 +1414,8 @@ setInterval(micUI,1000);
 const nrm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9%³\s]/g,' ').replace(/\s+/g,' ').trim();
 const tem=(q,re)=>re.test(' '+q+' ');
 // «Hey Eco»: a saudação é opcional se «eco» abrir a frase; «ecocell» não conta
-const WAKE=/^(?:.*?\b(?:hey|hei|ei|ey|eh|oi|ola|alo|ok|okay|hi|hello|oh)\s+|\s*)(?:eco|echo|eko|ecco|ekko|ecu|eco's)\b(.*)$/;
+// só «Olá Eco», «Oi Eco», «Ei Eco» (e «Hey Eco» no site em inglês): «eco» sozinho não acorda, para não disparar em conversas
+const WAKE=/^(?:.*?\b)?(?:ola|oi|ei|hei|hey|ey|hola|alo|hello|hi)\s+(?:eco|echo|eko|ecco|ekko|ecu|eco's)\b(.*)$/;
 const acordou=q=>{const m=q.match(WAKE);return m?m[1].trim():null};
 /* --- variáveis: palavras que as identificam (a ordem importa: «temperatura do mar» antes de «temperatura») --- */
 const VPAL=[['clor',/\b(clorofila|chlorophyll|fitoplancton|phytoplankton|algas|algae)\b/],['sst',/\b(temperatura (da agua )?do mar|temperatura do oceano|sea (surface )?temperature|ocean temperature|sst|mar|oceano|oceanos|sea|ocean|oceans)\b/],
@@ -1457,10 +1512,11 @@ function ecoAbre(){if(BOT.conv)return;const bot=$('#bot');
   clearInterval(BOT.seg);BOT.seg=setInterval(botSegue,200)}
  BOT.conv=true;bot.classList.add('conv');$('#botPerg').hidden=false;botBotoes();convTitulos();$('#botTx').innerHTML='';chips()}
 function convTitulos(){$('#botSub').textContent=L2('assistente EcoCell','EcoCell assistant')+(typeof IA!=='undefined'&&IA.url?' · IA Gemini':'');$('#botT').textContent=L2('Em que posso ajudar?','How can I help?');$('#botDots').innerHTML='';$('#botX').title=L2('Fechar a Eco','Close Eco');micUI()}
-function ecoFecha(){if(!BOT.conv)return;BOT.conv=false;BOT.on=false;BOT.run++;if('speechSynthesis' in window)speechSynthesis.cancel();if(BOT.audio){BOT.audio.pause();BOT.audio=null}clearInterval(BOT.ti);clearInterval(BOT.seg);OUV.fala=false;OUV.livre=0;
+function ecoFecha(){if(!BOT.conv)return;BOT.conv=false;BOT.on=false;BOT.run++;if(typeof IA!=='undefined')IA.n++;   // uma resposta da IA que ainda venha a caminho é ignorada
+ if('speechSynthesis' in window){speechSynthesis.pause();speechSynthesis.cancel();[150,500,1200].forEach(ms=>setTimeout(()=>{if(!BOT.on)speechSynthesis.cancel()},ms))}   // o Chrome às vezes continua a frase: insisteif(BOT.audio){BOT.audio.pause();BOT.audio=null}clearInterval(BOT.ti);clearInterval(BOT.seg);OUV.fala=false;OUV.livre=0;
  BOT.el=null;$('#spot').classList.remove('on');$('#botCur').style.opacity=0;$('#ecoVoo').classList.remove('on');$('#botAv').style.visibility='';const bot=$('#bot');bot.classList.remove('conv');$('#botPerg').hidden=true;$('#botOuv').textContent='';
  botVoa(false,()=>{bot.hidden=true;bot.style.opacity='';$('#logo').style.visibility=''});bot.style.opacity=0;micUI()}
-async function ecoDiz(t){const id=++BOT.run;OUV.fala=true;$('#botTx').innerHTML='';cara('f',1);
+async function ecoDiz(t){if(!BOT.on||!BOT.conv)return;const id=++BOT.run;OUV.fala=true;$('#botTx').innerHTML='';cara('f',1);
  if(BOT.voz&&navigator.userActivation&&!navigator.userActivation.hasBeenActive)setTimeout(()=>avisoVoz(L2('Para ouvires a minha voz, carrega uma vez em qualquer sítio da página (regra do browser).','To hear my voice, click once anywhere on the page (browser rule).')),300);   /* o browser só deixa falar depois do 1.º clique */
 try{await diz(t,id)}catch(e){}if(id===BOT.run){OUV.fala=false;OUV.ate=performance.now()+700;OUV.livre=performance.now()+15000;micUI()}}   // depois de responder ouve 15 s sem precisar de «Olá Eco»
 /* --- Eco IA: com o ficheiro eco_ia.json ({"url": "https://….workers.dev"}) as perguntas vão para o Gemini através do Worker da Cloudflare,
@@ -1471,6 +1527,14 @@ let HIST=null;const histCarrega=()=>HIST||(HIST=fetch('historico.json',{cache:'n
 // ordens curtas que a Eco faz logo, sem perguntar à IA
 const COMANDO=/\b(adeus|tchau|xau|ate logo|ate ja|fecha|fechar|close|bye|goodbye|sair|exit|desliga|visita guiada|tour|globo|globe|3d|2d|mapa plano|flat map|anima|animar|animacao|animate|animation|ano a ano|year by year|ingles|english|portugues|portuguese|volta|voltar|parar|stop|obrigad[oa]|thanks)\b/;
 const r3=x=>x==null||!isFinite(x)?null:+(+x).toPrecision(3);
+// perguntas diretas sobre os dados («como está o metano em Angola?», «e a chuva?», «onde sobe mais a vegetação?»): a Eco responde na hora,
+// sem esperar pela IA; comparações, «porquê», «ontem/hoje» e tudo o resto continuam a ir para a IA
+const DIFICIL=/\b(compar\w*|rela\w*|porque|por que|porqu\w*|why|how come|ontem|hoje|semana|mes passado|atualiz\w*|diferen\w*|versus|vs|explica\w*|significa\w*|causa\w*|previs\w*|futuro|e se|what if|se\w* que|melhor|pior|devo|should|recomend\w*|impacto|impact|consequen\w*|ajuda|help)\b/;
+function perguntaSimples(q){if(q.split(' ').length>12||tem(q,DIFICIL))return false;const v=acharVar(q),i=acharPais(q);
+ if(v&&(i>=0||tem(q,/\b(onde|where|que pais\w*|quais pais\w*|which countr\w*)\b/)))return true;   // variável + país, ou «onde sobe/desce mais»
+ if(v&&OUV.ctx.p>=0&&lvl>=2&&q.split(' ').length<=5)return true;   // «e a chuva?» com um país aberto
+ if(i>=0&&OUV.ctx.v&&q.split(' ').length<=5)return true;   // «e no Brasil?»
+ return tem(q,/\b(mais muda\w*|muda\w* mais|change\w* (the )?most|qual a variavel|which variable)\b/)}
 function pearson(x,y){const n=x.length,mx=x.reduce((a,b)=>a+b)/n,my=y.reduce((a,b)=>a+b)/n;let sxy=0,sx=0,sy=0;for(let k=0;k<n;k++){sxy+=(x[k]-mx)*(y[k]-my);sx+=(x[k]-mx)**2;sy+=(y[k]-my)**2}return sxy/Math.sqrt(sx*sy)}
 async function contextoIA(q){const H=await histCarrega(),anos=v=>Array.from({length:v.anos[1]-v.anos[0]+1},(_,k)=>v.anos[0]+k);
  const ps=new Set();for(const [s,i] of paisesNomes()){if(ps.size>=3)break;if(tem(q,new RegExp('[^a-z]'+s.replace(/ /g,'\\s')+'[^a-z]')))ps.add(i)}if(curC>=0)ps.add(curC);if(OUV.ctx.p>=0)ps.add(OUV.ctx.p);
@@ -1499,14 +1563,15 @@ function aplicaAcoes(L){for(const a of (L||[])){const t=a.tipo,val=nrm(a.valor||
  else if(t==='mundo')world();else if(t==='globo3d')glToggle(true);else if(t==='mapa2d')glToggle(false);else if(t==='parar_animacao')vAnimLiga(false)}catch(e){console.warn('ação da IA',a,e)}}}
 async function pergunta(t){ecoAbre();const q=nrm(t),w=acordou(q),txt=w!==null?w:t;$('#botOuv').dataset.q='1';$('#botOuv').textContent='«'+(w!==null&&w?txt:t)+'»';setTimeout(()=>{delete $('#botOuv').dataset.q},4000);
  if(w!==null&&w.length<2)return ecoDiz(L2('Olá! Em que posso ajudar?','Hello! How can I help?'));
- const nq=nrm(txt),ordem=nq.split(' ').length<=6&&tem(nq,COMANDO),id0=++IA.n;
- if(IA.url&&!ordem){$('#botQ').innerHTML='';$('#botTx').textContent=L2('A pensar…','Thinking…');cara('p');
-  try{const r=await perguntaIA(t);if(id0!==IA.n)return;aplicaAcoes(r.acoes);IA.hist.push({q:t,r:r.resposta});IA.hist=IA.hist.slice(-6);convTitulos();ecoDiz(r.resposta);return}
-  catch(e){console.warn('Eco IA indisponível; respondo com as regras',e);if(id0!==IA.n)return}}
+ const nq=nrm(txt),ordem=nq.split(' ').length<=6&&tem(nq,COMANDO),id0=++IA.n,simples=perguntaSimples(nq);
+ if(IA.url&&!ordem&&!simples){$('#botQ').innerHTML='';$('#botTx').textContent=L2('A pensar…','Thinking…');cara('p');
+  try{const r=await perguntaIA(t);if(id0!==IA.n||!BOT.conv)return;aplicaAcoes(r.acoes);IA.hist.push({q:t,r:r.resposta});IA.hist=IA.hist.slice(-6);convTitulos();ecoDiz(r.resposta);return}
+  catch(e){console.warn('Eco IA indisponível; respondo com as regras',e);if(id0!==IA.n||!BOT.conv)return}}
  let r;try{r=responde(txt)}catch(e){console.error(e);r={t:L2('Desculpa, algo correu mal ao responder.','Sorry, something went wrong while answering.')}}
  if(r.chips)chips();else $('#botQ').innerHTML='';
  if(r.fim){ecoDiz(r.t).then(()=>ecoFecha());return}
  if(r.tour){ecoDiz(r.t).then(()=>{ecoFecha();setTimeout(botStart,1900)});return}
+ IA.hist.push({q:txt,r:r.t});IA.hist=IA.hist.slice(-6);   // a IA fica a saber o que a Eco já respondeu sozinha
  convTitulos();ecoDiz(r.t)}
 /* --- microfone: ouve sempre, mas só responde depois de «Olá Eco» (ou nos 15 s a seguir a uma resposta) --- */
 function ouvTexto(alts){const t=alts[0]||'';if(OUV.fala||performance.now()<OUV.ate)return;   // a Eco não se ouve a si própria
@@ -1515,7 +1580,9 @@ function ouvTexto(alts){const t=alts[0]||'';if(OUV.fala||performance.now()<OUV.a
  if(BOT.conv&&performance.now()<OUV.livre&&q.length>1)pergunta(t)}
 function ouvInicia(){if(!OUV.on||!SR)return;const r=new SR();r.lang=LANG==='en'?'en-US':'pt-PT';r.continuous=true;r.interimResults=true;r.maxAlternatives=3;
  r.onresult=e=>{for(let k=e.resultIndex;k<e.results.length;k++){const res=e.results[k];if(res.isFinal){OUV.erros=0;ouvTexto([...res].map(a=>a.transcript))}
-  else if(BOT.conv&&!OUV.fala&&performance.now()>=OUV.ate){OUV.tInt=performance.now();$('#botOuv').textContent='🎤 '+res[0].transcript}}};
+  else{const it=res[0].transcript,livre=!OUV.fala&&performance.now()>=OUV.ate;
+   if(!BOT.conv&&livre&&acordou(nrm(it))!==null){ecoAbre();OUV.livre=performance.now()+15000;OUV.tInt=performance.now();$('#botOuv').textContent='🎤 '+L2('Estou a ouvir…','Listening…');micUI()}   // acorda logo ao ouvir «Olá Eco», sem esperar pelo fim da frase
+   else if(BOT.conv&&livre){OUV.tInt=performance.now();$('#botOuv').textContent='🎤 '+it}}}};
  r.onerror=e=>{if(/not-allowed|service-not-allowed/.test(e.error)){OUV.on=false;micUI();ecoAbre();ecoDiz(L2('Não tenho autorização para usar o microfone. Carrega no cadeado ao lado do endereço do site e permite o microfone.','I am not allowed to use the microphone. Click the padlock next to the site address and allow the microphone.'));return}
   if(e.error==='network'||e.error==='audio-capture'){if(++OUV.erros>=3){OUV.on=false;micUI();ecoAbre();ecoDiz(e.error==='network'?L2('O reconhecimento de voz precisa de internet e não está a responder. Podes escrever a pergunta aqui.','Speech recognition needs the internet and is not responding. You can type the question here.'):L2('Não encontro nenhum microfone. Podes escrever a pergunta aqui.','I cannot find a microphone. You can type the question here.'))}}};
  r.onend=()=>{if(OUV.rec===r&&OUV.on)setTimeout(ouvInicia,OUV.erros?1500:250)};
@@ -1523,7 +1590,7 @@ function ouvInicia(){if(!OUV.on||!SR)return;const r=new SR();r.lang=LANG==='en'?
 function ouvLiga(on){if(!SR){ecoAbre();ecoDiz(L2('Este browser não percebe voz. Usa o Google Chrome ou o Microsoft Edge, ou escreve a pergunta aqui em baixo.','This browser does not understand speech. Use Google Chrome or Microsoft Edge, or type your question below.'));return}
  OUV.on=on;OUV.erros=0;if(on){if('speechSynthesis' in window)try{speechSynthesis.cancel();speechSynthesis.resume();const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}   // desbloqueia a voz dentro do clique
   ouvInicia();ecoAbre();ecoDiz(L2('Estou a ouvir! Diz «Olá Eco» e faz a tua pergunta. Por exemplo: «Olá Eco, como está o metano em Angola?»','I am listening! Say «Hey Eco» and ask your question. For example: «Hey Eco, how is methane in Angola?»'))}
- else{const r=OUV.rec;OUV.rec=null;if(r)try{r.abort()}catch(e){}}
+ else{const r=OUV.rec;OUV.rec=null;if(r)try{r.abort()}catch(e){}if(BOT.conv)ecoFecha()}   // desligar o microfone também cala e fecha a Eco
  micUI()}
 $('#ecoMic').onclick=()=>{ouvLiga(!OUV.on);try{localStorage.setItem('ecocell-mic',OUV.on?'1':'0')}catch(e){}};   // lembra a escolha: desligado fica desligado
 $('#botPerg').onsubmit=e=>{e.preventDefault();const t=$('#botIn').value.trim();if(!t)return;$('#botIn').value='';pergunta(t)};
