@@ -358,7 +358,7 @@ $('#back').onclick=()=>lvl===3?go(curC):lvl===2?cont(cur):world();
 function openWin(id,on){const w=$('#w-'+id),open=on===undefined?!w.classList.contains('on'):on;document.querySelectorAll('.win').forEach(x=>x.classList.remove('on'));if(open){w.classList.add('on');$('#toast').hidden=true}cmpOn=$('#w-c').classList.contains('on')}
 function tab(t){openWin(t==='m'?'i':t,true)}
 document.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>openWin(b.dataset.w));document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>openWin(b.dataset.x,false));
-function toast(){if(quiet||$('#w-i').classList.contains('on'))return;const I=$('#info'),h=I.querySelector('h2'),p=[...I.querySelectorAll('p')].map(x=>x.textContent.replace(/\s+/g,' ').trim()).find(x=>x.length>3)||'',nm=h?h.textContent.trim():I.textContent.trim().slice(0,40);
+function toast(){if(quiet||$('#w-i').classList.contains('on')||$('#w-q').classList.contains('on'))return;const I=$('#info'),h=I.querySelector('h2'),p=[...I.querySelectorAll('p')].map(x=>x.textContent.replace(/\s+/g,' ').trim()).find(x=>x.length>3)||'',nm=h?h.textContent.trim():I.textContent.trim().slice(0,40);
  document.querySelectorAll('.win').forEach(x=>x.classList.remove('on'));$('#tt1').innerHTML='<b></b>';$('#tt1 b').textContent=nm;clearTimeout(window._tt);window._tt=setTimeout(()=>{$('#toast').hidden=true},10000);$('#toast').hidden=false}
 new MutationObserver(toast).observe($('#info'),{childList:true});
 $('#toast').onclick=e=>{if(e.target.id==='toastx'){$('#toast').hidden=true;return}openWin('i',true)};
@@ -1085,6 +1085,71 @@ const ICO={ant:'<svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/><
 const BOT={on:false,k:0,pts:0,run:0,pausado:false,voz:true,nomeVoz:'',el:null,seg:0,ti:0,modo0:false};
 try{const v=localStorage.getItem('ecocell-voz2');if(v!==null)BOT.voz=v==='1';BOT.nomeVoz=localStorage.getItem('ecocell-voz-nome')||'';BOT.estilo=localStorage.getItem('ecocell-estilo')||'eco'}catch(e){}
 document.body.insertAdjacentHTML('beforeend',`<div id="spot"></div><div id="botCur">${ICO.cur}</div><div id="ecoVoo" data-ex="n" aria-hidden="true">${BOT_SVG}</div><div id="bot" hidden role="dialog" aria-live="polite"><div id="botAv" data-ex="n" title="Eco">${BOT_SVG}</div><div id="botBal" class="gl"><div id="botH"><b>Eco</b><span id="botSub"></span><span id="botDots"></span></div><div id="botT"></div><div id="botTx"></div><div id="botAviso" hidden></div><div id="botMenu" class="gl" hidden><label><span id="botMenuL"></span><select id="botVozSel2"></select></label><label><span id="botEstL"></span><select id="botEst"><option value="eco"></option><option value="locutor"></option></select></label><button class="b" id="botTesta"></button><small id="botMenuNota"></small></div><div id="botQ"></div><div id="botN"><button class="b" id="botAnt">${ICO.ant}</button><button class="b pri" id="botPau">${ICO.pausa}</button><button class="b" id="botSeg">${ICO.seg}</button><span class="sp"></span><button class="b" id="botVel"></button><button class="b" id="botCfg"></button><button class="b" id="botVoz">${ICO.som}</button><button class="b" id="botX">${ICO.x}</button></div></div></div><div id="botVid" hidden><iframe title="Vídeo" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`);
+// «Quando mudou?» acompanha a zona escolhida no mapa (mundo, continente, país ou bloco), em 2D e em 3D
+const QZ={cel:null,z:null,zp:null,b:null,bp:null,n:0};
+function qzZonas(){return QZ.zp||(QZ.zp=fetch('periodos_zonas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(j=>QZ.z=j))}
+function qzBlocos(){return QZ.bp||(QZ.bp=fetch('periodos_blocos.bin').then(r=>r.ok?r.arrayBuffer():null).catch(()=>null).then(b=>QZ.b=b?new Int16Array(b):null))}
+addEventListener('load',()=>setTimeout(qzZonas,1500));
+function qzZona(){const B=QZ.cel;
+ if(B){const r=Math.floor(90-B.lat),c=Math.floor(B.lon+180),la=89.5-r,lo=c-179.5,f=typeof featAt==='function'?featAt([lo,la]):null,p=f?D.countries[f.properties.i]:null;
+  return {t:'b',r,c,la,lo,en:p?p.en:null,nome:`${L2('Bloco','Block')} ${fmtA(la,1)}°, ${fmtA(lo,1)}°${p?' ('+p.n+')':''}`}}
+ if(lvl>=2&&curC>=0)return {t:'p',i:curC,en:D.countries[curC].en,nome:D.countries[curC].n};
+ if(lvl===1&&cur>=0)return {t:'c',k:cur,nome:CN[cur].n};
+ return {t:'m',nome:L2('Mundo','World')}}
+function qzDados(Z){const P=QZ.z;   // cada período: [ppb/ano, IC baixo, IC alto]
+ if(Z.t==='b'){if(!QZ.b)return null;const o=(Z.r*360+Z.c)*8,g=[];for(let n=0;n<4;n++){const s=QZ.b[o+n*2],e=QZ.b[o+n*2+1];g.push(s===-32768?null:[s/100,(s-e)/100,(s+e)/100])}return g.some(x=>x)?{g}:null}
+ if(!P)return null;return Z.t==='p'?P.paises[Z.en]||null:P.continentes[D.conts[Z.k].n]||null}
+function qzPer(){return (QZ.z&&QZ.z.per)||(D.per?Object.keys(D.per.global_):null)}
+function qzJan(J){const G=D.per?D.per.janela_5_anos:[],w=520,h=190,p=34,x0=J[0][0],x1=J[J.length-1][0],lo=Math.min(0,...J.map(r=>r[2])),hi=Math.max(...J.map(r=>r[3])),X=t=>p+(t-x0)/((x1-x0)||1)*(w-p-8),Y=v=>h-24-(v-lo)/((hi-lo)||1)*(h-38),GV=G.filter(r=>r[0]>=x0&&r[0]<=x1);
+ const anos=d3.range(Math.ceil(x0/5)*5,x1+.01,5);
+ return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto"><polygon points="${J.map(r=>X(r[0])+','+Y(r[3])).join(' ')} ${J.slice().reverse().map(r=>X(r[0])+','+Y(r[2])).join(' ')}" fill="#1f7a4d" opacity=".22"/><line x1="${p}" x2="${w-8}" y1="${Y(0)}" y2="${Y(0)}" stroke="#9aa5a0"/>
+ ${GV.length?`<polyline fill="none" stroke="#9aa5a0" stroke-width="1.6" stroke-dasharray="5 3" points="${GV.map(r=>X(r[0])+','+Y(r[1])).join(' ')}"/>`:''}<polyline fill="none" stroke="#1f7a4d" stroke-width="2.2" points="${J.map(r=>X(r[0])+','+Y(r[1])).join(' ')}"/>
+ ${anos.map(a=>`<text x="${X(a)}" y="${h-8}" font-size="10" fill="currentColor" text-anchor="middle">${a}</text>`).join('')}<text x="2" y="${Y(hi)+8}" font-size="10" fill="currentColor">${Math.round(hi)}</text><text x="2" y="${Y(0)+3}" font-size="10" fill="currentColor">0</text></svg>
+ <p class="mut" style="font-size:12px">${L2('Verde: tendência em janelas de 5 anos, com intervalo de 95 %. Cinzento tracejado: mundo.','Green: trend in 5-year windows, with the 95% interval. Grey dashed: world.')}</p>`}
+function qzVars(Z){const V=VD.filter(v=>v.id!=='ch4'),L=[];
+ for(const v of V){let s=null,sig=false,tx=null;
+  if(Z.t==='m'){s=v.glob.s;sig=v.glob.p<.05;tx=L2(`${fmtA(v.sobe,1)} % da área sobe, ${fmtA(v.desce,1)} % desce`,`${fmtA(v.sobe,1)}% of the area rises, ${fmtA(v.desce,1)}% falls`)}
+  else if(Z.t==='p'){const a=v.paises[Z.en];if(!a)continue;s=a[0];sig=!!a[5]}
+  else if(Z.t==='b'){const i=Z.r*360+Z.c;if(v.R[i]===-128)continue;s=v.R[i]/120*v.esc;sig=!!sigBit(v,i)}
+  else{const A=D.countries.filter(c=>c.k===Z.k).map(c=>v.paises[c.en]).filter(Boolean);if(!A.length)continue;const u=A.filter(a=>a[5]&&a[0]>0).length,d=A.filter(a=>a[5]&&a[0]<0).length;s=d3.median(A,a=>a[0]);sig=u+d>A.length/2;tx=L2(`${u} sobem, ${d} descem, de ${A.length} países`,`${u} rise, ${d} fall, of ${A.length} countries`)}
+  L.push({v,s,sig,tx})}
+ if(!L.length)return '';
+ const mud=L.filter(x=>x.sig),lista=mud.map(x=>`${vNome(x.v)}: ${x.s>0?L2('sobe','rises'):L2('desce','falls')}`).join('; ');
+ return `<h2 style="margin-top:14px">${L2('Em que aspecto mudou? Outras variáveis da NASA','What changed? Other NASA variables')}</h2>
+ <p style="font-size:13px">${mud.length?(Z.t==='c'?L2('Mudou na maioria dos países: ','Changed in most countries: '):L2('Mudou de forma significativa: ','Changed significantly: '))+lista+'.':(Z.t==='c'?L2('Nenhuma destas variáveis mudou na maioria dos países.','None of these variables changed in most countries.'):L2('Nenhuma destas variáveis tem tendência significativa aqui.','None of these variables has a significant trend here.'))}</p>
+ <div class="tw"><table><tr><th>${L2('Variável','Variable')}</th><th>${Z.t==='c'?L2('Tendência mediana','Median trend'):L2('Tendência','Trend')}</th><th>${L2('Mudou?','Changed?')}</th></tr>${L.map(x=>`<tr><td>${vNome(x.v)}</td><td>${fmtN(x.s,3)} ${vTr(x.v)}</td><td>${x.tx||(x.sig?(x.s>0?L2('Sim, sobe','Yes, rises'):L2('Sim, desce','Yes, falls')):L2('Sem mudança significativa','No significant change'))}</td></tr>`).join('')}</table></div>
+ <p class="mut" style="font-size:12px">${L2('Médias anuais. Sen + Mann-Kendall, FDR q < 0,05. Cada variável tem os seus anos: vê a fonte em «Métodos e fontes».','Annual means. Sen + Mann-Kendall, FDR q < 0.05. Each variable has its own years: see the source in «Methods and sources».')}</p>`}
+function qzHTML(Z){const R=qzDados(Z),per=qzPer();
+ if(!R||!per){const ar=Z.t==='p'?D.countries[Z.i].air:Z.t==='c'&&D.airsK?D.airsK[Z.k]:null;
+  return (ar?`<p style="font-size:13px"><b>${L2('O que muda?','What changes?')}</b> ${L2(`${Z.nome}: o metano muda ${fmtN(ar.s)} ppb/ano (IC 95 %: ${fmtN(ar.lo)} a ${fmtN(ar.hi)}).`,`${Z.nome}: methane changes ${fmtN(ar.s)} ppb/yr (95% CI: ${fmtN(ar.lo)} to ${fmtN(ar.hi)}).`)}</p>`:`<p class="mut" style="font-size:13px">${Z.t==='b'?L2('O AIRS não tem meses suficientes de metano neste bloco (acontece sobretudo perto dos polos).','AIRS does not have enough months of methane in this block (mostly near the poles).'):L2('A divisão por períodos desta zona ainda não está disponível.','The breakdown by period is not available for this zone yet.')}</p>`)+qzVars(Z)}
+ const g=R.g,F=g[3]||g.find(x=>x),sg=x=>x[1]>0||x[2]<0,G=D.per?D.per.global_:null,gv=n=>G&&G[per[n]]?G[per[n]].slope:null,ep=[0,1,2].filter(n=>g[n]),mx=ep.reduce((a,n)=>g[n][0]>g[a][0]?n:a,ep[0]),lab=k=>k.replace(' a ',' → '),ano=per[3].slice(0,4);
+ const pk=R.j&&R.j.length?R.j.reduce((a,r)=>r[1]>a[1]?r:a,R.j[0]):null,ac=R.ac,acS=ac&&(ac[1]>0||ac[2]<0),gF=gv(3),dif=gF!=null&&(gF<F[1]||gF>F[2]);
+ let h=`<p style="font-size:13px"><b>${L2('O que muda?','What changes?')}</b> ${L2(`${Z.nome}: o metano ${F[0]>=0?'sobe':'desce'} ${fmtN(F[0])} ppb/ano desde ${ano} (IC 95 %: ${fmtN(F[1])} a ${fmtN(F[2])}), ${sg(F)?'significativo':'não significativo'}.`,`${Z.nome}: methane ${F[0]>=0?'rises':'falls'} ${fmtN(F[0])} ppb/yr since ${ano} (95% CI: ${fmtN(F[1])} to ${fmtN(F[2])}), ${sg(F)?'significant':'not significant'}.`)}
+ ${ac?(acS?L2(`O ritmo ${ac[0]>0?'acelera':'abranda'} ${fmtN(ac[0])} ppb/ano em cada ano.`,`The pace ${ac[0]>0?'speeds up':'slows'} by ${fmtN(ac[0])} ppb/yr each year.`):L2('A mudança de ritmo não é significativa.','The change of pace is not significant.')):''}</p>
+ <p style="font-size:13px"><b>${L2('Quando?','When?')}</b> ${L2(`O ritmo mais alto dos três períodos foi ${lab(per[mx])} (${fmtN(g[mx][0])} ppb/ano)`,`The fastest of the three periods was ${lab(per[mx])} (${fmtN(g[mx][0])} ppb/yr)`)}${pk?L2(`, com o pico nas janelas de 5 anos centradas em ${Math.round(pk[0])} (${fmtN(pk[1])} ppb/ano).`,`, peaking in the 5-year windows centred on ${Math.round(pk[0])} (${fmtN(pk[1])} ppb/yr).`):'.'}</p>
+ ${gF!=null?`<p style="font-size:13px"><b>${L2('Face ao mundo:','Against the world:')}</b> ${fmtN(F[0]-gF)} ppb/ano ${L2('face à média global','against the global mean')} (${fmtN(gF)}), ${dif?L2('fora do intervalo desta zona.','outside this zone\'s interval.'):L2('dentro do intervalo desta zona: não é diferente.','inside this zone\'s interval: not different.')}</p>`:''}
+ <div class="tw"><table><tr><th>${L2('Período','Period')}</th><th>ppb/${L2('ano','yr')}</th><th>IC 95%</th><th>${L2('Significativo','Significant')}</th>${G?`<th>${L2('Mundo','World')}</th>`:''}</tr>${per.map((k,n)=>g[n]?`<tr><td>${lab(k)}</td><td><b>${fmtN(g[n][0])}</b></td><td>${fmtN(g[n][1])} ${L2('a','to')} ${fmtN(g[n][2])}</td><td>${sg(g[n])?L2('Sim','Yes'):L2('Não','No')}</td>${G?`<td>${gv(n)!=null?fmtN(gv(n)):'—'}</td>`:''}</tr>`:`<tr><td>${lab(k)}</td><td colspan="${G?4:3}" class="mut">${L2('Meses insuficientes','Not enough months')}</td></tr>`).join('')}</table></div>`;
+ if(R.j&&R.j.length>1)h+=`<h2 style="margin-top:14px">${L2('Quando? Tendência em janelas de 5 anos','When? Trend in 5-year windows')}</h2>${qzJan(R.j)}`;
+ if(Z.t==='b'&&D.airs&&D.airsC){const a=D.airsC[Z.la+','+Z.lo];if(a)h+=`<h2 style="margin-top:14px">${L2('Metano ano a ano neste bloco','Methane year by year in this block')}</h2>${grafico({an:D.airs.anos,se:a.se,s:a.s})}`}
+ if(Z.t==='c'&&QZ.z){const L=D.countries.map((c,i)=>({c,i,z:QZ.z.paises[c.en]})).filter(o=>o.c.k===Z.k&&o.z&&o.z.g[2]&&o.z.g[3]).sort((a,b)=>b.z.g[2][0]-a.z.g[2][0]);
+  if(L.length)h+=`<h2 style="margin-top:14px">${L2('Países','Countries')}: ${Z.nome}</h2><div class="tw"><table><tr><th>${L2('País','Country')}</th><th>${L2('Desde','Since')} ${ano}</th><th>${lab(per[2])}</th><th>${L2('Acelerou?','Sped up?')}</th></tr>${L.map(o=>{const a=o.z.ac,s=a&&(a[1]>0||a[2]<0);return `<tr class="go" data-qi="${o.i}"><td>${o.c.n}</td><td>${fmtN(o.z.g[3][0])}</td><td><b>${fmtN(o.z.g[2][0])}</b></td><td>${s?(a[0]>0?L2('Sim','Yes'):L2('Abrandou','Slowed')):L2('Não','No')}</td></tr>`}).join('')}</table></div><p class="mut" style="font-size:12px">${L2('Em ppb/ano. Toca num país para o abrir.','In ppb/yr. Tap a country to open it.')}</p>`}
+ h+=qzVars(Z);
+ h+=`<p class="mut" style="font-size:12px"><b>${L2('Limites:','Limits:')}</b> ${L2('o AIRS mede a troposfera média (cerca de 400 hPa), onde o ar vem de longe: a tendência de uma zona não é a das emissões dessa zona, e as diferenças entre regiões não ficaram confirmadas por um segundo instrumento.','AIRS measures the mid troposphere (about 400 hPa), where air comes from far away: the trend of a zone is not that of its emissions, and differences between regions were not confirmed by a second instrument.')}${Z.t==='b'?L2(' Nos blocos a tendência é uma regressão linear; nas outras zonas, a tendência de Sen.',' In blocks the trend is a linear regression; in other zones, the Sen trend.'):''} ${L2('Fonte: NASA Aqua AIRS L3 v7.0.','Source: NASA Aqua AIRS L3 v7.0.')}</p>`;
+ return h}
+async function qzAtualiza(){const W=$('#w-q');if(!W||!W.classList.contains('on'))return;const id=++QZ.n,Z=qzZona(),P=$('#pq');
+ W.querySelector('.wh span').textContent=Z.t==='m'?L2('Quando mudou? Metano global (AIRS)','When did it change? Global methane (AIRS)'):`${L2('Quando mudou?','When did it change?')} ${Z.nome}`;
+ if(!D.per&&!QZ.pp)QZ.pp=fetch('periodos.json').then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{if(j)D.per=j});   // site ainda não reconstruído com os períodos
+ if(Z.t==='m'){if(!D.per){await QZ.pp;if(id!==QZ.n)return}P.innerHTML=perHTML()+qzVars(Z);return}
+ if((Z.t==='b'&&!QZ.bp)||!QZ.zp||!AIRSOK)P.innerHTML=`<p class="mut" style="font-size:13px">${L2('A carregar os períodos desta zona…','Loading the periods of this zone…')}</p>`;
+ await Promise.all([qzZonas(),QZ.pp,Z.t==='b'?qzBlocos():null,Z.t==='b'?airsCarrega():null]);if(id!==QZ.n)return;
+ P.innerHTML=qzHTML(Z);P.scrollTop=0;W.scrollTop=0;
+ P.querySelectorAll('tr[data-qi]').forEach(r=>r.onclick=()=>go(+r.dataset.qi))}
+function qzCtx(){if(!QZ.z)return null;const Z=qzZona();if(Z.t==='m'||Z.t==='b')return null;const R=qzDados(Z);return R?{zona:Z.nome,periodos:QZ.z.per,ppb_ano_ic95_p:R.g,aceleracao_ic95:R.ac}:null}
+{const zc=f=>function(...a){QZ.cel=null;const r=f.apply(this,a);qzAtualiza();return r};world=zc(world);cont=zc(cont);go=zc(go);
+ const s0=show0;show0=function(c){const r=s0.call(this,c);QZ.cel={lat:c.lat,lon:c.lon};qzAtualiza();return r};
+ const vc=varCelula;varCelula=function(lat,lon){QZ.cel={lat,lon};const r=vc.call(this,lat,lon);qzAtualiza();return r};
+ const ow=openWin;openWin=function(id,on){ow(id,on);if(id==='q')qzAtualiza()};
+ $('#btnLang').addEventListener('click',()=>setTimeout(qzAtualiza,90))}
 const L2=(pt,en)=>LANG==='en'?en:pt,idxPais=en=>D.countries.findIndex(c=>c.en===en),fechaJanelas=()=>document.querySelectorAll('.win').forEach(x=>x.classList.remove('on')),reduzir=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 /* --- motor da demonstração: cada passo corre como uma tarefa assíncrona; mudar de passo cancela a anterior --- */
 class Cancela{}
@@ -1556,7 +1621,7 @@ async function contextoIA(q){const H=await histCarrega(),anos=v=>Array.from({len
    metodo:'tendência de Sen por bloco de 1 grau (~110 km), teste de Mann-Kendall, correção FDR (q<0,05); zonas: sobe muito, sobe, sem mudança significativa, desce, desce muito',
    site_gerado_em_utc:D.meta.built,metano_dados_ate:D.meta.end,outras_partes:'mapa 2D e globo 3D, animação ano a ano, blocos por país, células de metano com pontuação e simulação EcoCell, chuva GPM, comparar países, ligar variáveis, visita guiada com a Eco',
    nota_series:'serie_anomalia_anual = diferença de cada ano para a média do período (media_periodo); a clorofila está em log10 de mg/m³'},
-  estado_mapa:{vista:GL.on?'globo 3D':'mapa 2D',variavel:VAR?VAR.id:null,nivel:['mundo','continente','país','bloco'][lvl]||'mundo',continente:lvl===1&&cur>=0?CN[cur].n:null,pais:curC>=0&&lvl>=2?D.countries[curC].en:null,animacao:!!VANIM.on},
+  estado_mapa:{vista:GL.on?'globo 3D':'mapa 2D',variavel:VAR?VAR.id:null,nivel:['mundo','continente','país','bloco'][lvl]||'mundo',continente:lvl===1&&cur>=0?CN[cur].n:null,pais:curC>=0&&lvl>=2?D.countries[curC].en:null,animacao:!!VANIM.on},quando_mudou_zona:qzCtx(),
   variaveis:VD.map(v=>({id:v.id,nome:vNome(v),unidade_tendencia:vTr(v),unidade:v.un,fonte:v.fonte,tipo:v.tipo,dominio:v.dom,anos:v.anos,
    tendencia_global:{por_decada:r3(v.glob.s),ic95:[r3(v.glob.lo),r3(v.glob.hi)],p:r3(v.glob.p)},area_sobe_pct:v.sobe,area_desce_pct:v.desce,media_periodo:r3(v.glob.media),
    serie_anomalia_anual:Object.fromEntries(anos(v).map((y,k)=>[y,r3(v.glob.serie[k])])),paises_que_mais_sobem:top(v,0),paises_que_mais_descem:top(v,1)})),
