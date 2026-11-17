@@ -7,7 +7,7 @@ Corre todos os dias (daily_update.py): começa pelos dias mais recentes e, com o
 a pasta que o GitHub Actions já guarda entre execuções, por isso cada noite continua onde a anterior ficou.
 
 Uso (com o token definido): py co2_baixar.py        Precisa: numpy earthaccess xarray pydap netCDF4
-Variável opcional: CO2_MINUTOS (tempo máximo por execução; 40 por omissão).
+Variáveis opcionais: CO2_MINUTOS (tempo máximo por execução; 40 por omissão), CO2_FIOS (dias lidos em paralelo; 8).
 """
 import os, re, glob, json, time, datetime
 import numpy as np, earthaccess
@@ -21,13 +21,29 @@ PRODUTOS = [("OCO2_L2_Lite_FP", "11.3r"), ("OCO2_L2_Lite_FP", "11.2r"), ("OCO3_L
 t0 = time.time()
 
 
+MEM = {}                                                       # meses em memória: gravados de vez em quando (ler e gravar o disco a cada dia é lento)
+
+
 def acumula(mes, la, lo, x):
     """soma e contagem do mês, por bloco de 1° (Norte em cima)"""
-    f = f"{PASTA}/{mes}.npz"
-    S, N = (np.load(f)["S"], np.load(f)["N"]) if os.path.exists(f) else (np.zeros((180, 360)), np.zeros((180, 360)))
+    if mes not in MEM:
+        f = f"{PASTA}/{mes}.npz"
+        MEM[mes] = (np.load(f)["S"], np.load(f)["N"]) if os.path.exists(f) else (np.zeros((180, 360)), np.zeros((180, 360)))
+    S, N = MEM[mes]
     r = np.clip(np.floor(90 - la), 0, 179).astype(int); c = np.clip(np.floor(((lo + 180) % 360)), 0, 359).astype(int)
     np.add.at(S, (r, c), x); np.add.at(N, (r, c), 1)
-    np.savez_compressed(f, S=S, N=N)
+
+
+def grava_progresso(novos):
+    for mes, (S, N) in MEM.items(): np.savez_compressed(f"{PASTA}/{mes}.npz", S=S, N=N)
+    with open(FEITOS, "a") as fh: fh.writelines(k + "\n" for k in novos)
+    novos.clear()
+
+
+def le(g):
+    """lê um dia (numa thread própria, com a sua sessão): só os 4 campos pelo OPeNDAP; se falhar, o ficheiro inteiro"""
+    try: return le_opendap(g, earthaccess.get_requests_https_session())
+    except Exception: return le_ficheiro(g)
 
 
 def le_opendap(g, sessao):
@@ -66,19 +82,24 @@ if __name__ == "__main__":
     gr.sort(key=lambda x: x[0], reverse=True)                  # mais recentes primeiro
     falta = [x for x in gr if x[1] not in feitos]
     print(f"OCO-2/OCO-3: {len(gr)} dias a usar, {len(falta)} por ler", flush=True)
-    sessao = earthaccess.get_requests_https_session(); lidos = 0
-    for d, chave, g in falta:
-        if time.time() - t0 > LIMITE: print("tempo esgotado nesta execução: continua amanhã"); break
-        try:
-            try: v = le_opendap(g, sessao)
-            except Exception as e1: print(f"  OPeNDAP falhou em {chave} ({str(e1)[:80]}); ficheiro inteiro...", flush=True); v = le_ficheiro(g)
-            ok = (v["xco2_quality_flag"] == 0) & np.isfinite(v["xco2"]) & (v["xco2"] > 350) & (v["xco2"] < 480)
-            acumula(d.strftime("%Y-%m"), v["latitude"][ok].astype(float), v["longitude"][ok].astype(float), v["xco2"][ok].astype(float))
-            with open(FEITOS, "a") as fh: fh.write(chave + "\n")
-            lidos += 1
-            if lidos % 25 == 0: print(f"  {lidos} dias lidos ({chave})", flush=True)
-        except Exception as e:
-            print(f"  falhou {chave}: {str(e)[:100]}", flush=True); time.sleep(5)
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    FIOS = int(os.environ.get("CO2_FIOS", "8"))                 # dias lidos ao mesmo tempo (a NASA aguenta bem alguns pedidos em paralelo)
+    lidos, novos = 0, []
+    with ThreadPoolExecutor(FIOS) as ex:
+        for i in range(0, len(falta), FIOS * 5):                # em lotes, para poder parar a tempo e gravar o progresso
+            if time.time() - t0 > LIMITE: print("tempo esgotado nesta execução: continua na próxima"); break
+            lote = falta[i: i + FIOS * 5]
+            fut = {ex.submit(le, g): (d, chave) for d, chave, g in lote}
+            for f in as_completed(fut):
+                d, chave = fut[f]
+                try:
+                    v = f.result()
+                    ok = (v["xco2_quality_flag"] == 0) & np.isfinite(v["xco2"]) & (v["xco2"] > 350) & (v["xco2"] < 480)
+                    acumula(d.strftime("%Y-%m"), v["latitude"][ok].astype(float), v["longitude"][ok].astype(float), v["xco2"][ok].astype(float))
+                    novos.append(chave); lidos += 1
+                except Exception as e: print(f"  falhou {chave}: {str(e)[:100]}", flush=True)
+            grava_progresso(novos)
+            print(f"  {lidos} dias lidos (até {lote[-1][1]}), {time.time() - t0:.0f} s", flush=True)
     print(f"lidos {lidos} dias nesta execução")
     fs = sorted(glob.glob(f"{PASTA}/????-??.npz"))
     if not fs: raise SystemExit("CO2: ainda sem meses")
