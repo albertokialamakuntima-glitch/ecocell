@@ -321,7 +321,7 @@ function metodosHTML(){return `<h2>O que quer dizer "significativo"</h2><p style
  <h2 style="margin-top:14px">Dados</h2><div class="tw"><table><tr><th>Variável</th><th>Missão e produto</th><th>Resolução e período</th></tr>
  <tr><td><b>Metano</b> (400 hPa)</td><td>NASA Aqua, instrumento AIRS, produto AIRS3STM v7.0 (nível 3 mensal, passagem diurna). Fornecedor: NASA GES DISC, acedido com o Earthdata Login.</td><td>1°; 2002-09 a 2026-08 (288 meses)</td></tr>
  <tr><td><b>Chuva</b></td><td>NASA GPM (parceria NASA-JAXA), produto IMERG mensal V07, totais anuais. DOI 10.5067/GPM/IMERG/3B-MONTH/07. Lido pelo catálogo do Google Earth Engine.</td><td>0,1° agregado a 1°; 2003–2024</td></tr>
- <tr><td><b>Variáveis da Terra</b></td><td>NASA Terra e Aqua MODIS (temperatura da superfície, vegetação, evapotranspiração, temperatura do mar, clorofila), NASA/DLR GRACE e GRACE-FO (mascons do JPL), modelo NASA FLDAS (temperatura do ar, humidade do solo), NASA GPM IMERG. Lidos pelo catálogo do Google Earth Engine.</td><td>1°; 2003–2024 (temperatura da superfície até 2020)</td></tr>
+ <tr><td><b>Variáveis da Terra</b></td><td>NASA Terra e Aqua MODIS (temperatura da superfície, vegetação, evapotranspiração, temperatura do mar, clorofila), NASA/DLR GRACE e GRACE-FO (mascons do JPL), modelo NASA FLDAS (temperatura do ar, humidade do solo), NASA GPM IMERG. Lidos pelo catálogo do Google Earth Engine.</td><td>1°; 2003–2024 (temperatura da superfície até 2020)</td></tr><tr><td><b>Dióxido de carbono</b></td><td>NASA OCO-2 assimilado no modelo GEOS (OCO2_GEOS_L3CO2_MONTH v10r), coluna total de CO₂ (XCO2). Lido pelo NASA Earthdata.</td><td>0,5° × 0,625°, passado a 1°; 2015–2021 (o produto termina em 2022)</td></tr>
  <tr><td>Camada de células e apoio à EcoCell</td><td>NASA Aqua AIRS (metano a 400 hPa): níveis, pontos quentes e janela Onde aplicar a EcoCell.</td><td>1°; últimos 3 anos completos</td></tr>
  <tr><td>Imagem da Terra</td><td>NASA Blue Marble (GIBS).</td><td>Até ~600 m</td></tr></table></div>
  <p class="mut" style="font-size:12px"><b>Só dados da NASA:</b> todas as variáveis, a camada de células e a imagem do mapa vêm de missões e modelos da NASA (algumas em parceria: GPM com a JAXA, GRACE com a agência alemã DLR).</p>
@@ -838,7 +838,7 @@ addEventListener('keydown',e=>{if(e.key!=='Escape'||e.defaultPrevented||(e.targe
    Dados: variaveis.json (embutido em D.vars) com, para cada variável, o mapa de tendências por célula de 1° (int8), a máscara de
    significância (bits), o resumo global e a tabela por país; e vars/<id>.json (carregado só quando preciso) com as estatísticas e as
    séries anuais de cada célula. Método igual em todas: Sen + Mann-Kendall corrigido + FDR (q < 0,05). Feito por variaveis_tendencias.py. */
-const VD=(D.vars&&D.vars.vars)||[],VQUENTE=['ch4','tar','lst','sst'];
+const VD=(D.vars&&D.vars.vars)||[],VQUENTE=['ch4','co2','tar','lst','sst'];
 const b64u8=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 VD.forEach(v=>{v.R=new Int8Array(b64u8(v.r).buffer);v.Mk=b64u8(v.m)});
 const sigBit=(v,i)=>(v.Mk[i>>3]>>(7-(i&7)))&1,vById=id=>VD.find(v=>v.id===id),vNome=v=>v.nome[LANG]||v.nome.pt,vTr=v=>v.tr[LANG]||v.tr.pt;
@@ -1493,13 +1493,13 @@ const tem=(q,re)=>re.test(' '+q+' ');
 const WAKE=/^(?:.*?\b)?(?:ola|olla|olha|o la|oh la|ou la|oi|oie|ei|hei|hey|ey|hola|alo|allo|hello|hi)\s+(?:eco|ecco|echo|eko|ekko|ecu|ego|heco|e co|eco s|ecos)\b(.*)$/;
 const acordou=q=>{const m=q.match(WAKE);return m?m[1].trim():null};
 /* --- variáveis: palavras que as identificam (a ordem importa: «temperatura do mar» antes de «temperatura») --- */
-const VPAL=[['clor',/\b(clorofila|chlorophyll|fitoplancton|phytoplankton|algas|algae)\b/],['sst',/\b(temperatura (da agua )?do mar|temperatura do oceano|sea (surface )?temperature|ocean temperature|sst|mar|oceano|oceanos|sea|ocean|oceans)\b/],
+const VPAL=[['co2',/\b(dioxido de carbono|carbon dioxide|co2|co 2|gas carbonico|carbono|carbon)\b/],['clor',/\b(clorofila|chlorophyll|fitoplancton|phytoplankton|algas|algae)\b/],['sst',/\b(temperatura (da agua )?do mar|temperatura do oceano|sea (surface )?temperature|ocean temperature|sst|mar|oceano|oceanos|sea|ocean|oceans)\b/],
  ['lst',/\b(superficie|surface|lst|temperatura da terra|land temperature)\b/],['solo',/\b(solo|solos|soil|soil moisture|humidade do solo|umidade do solo)\b/],['et',/\b(evapotranspiracao|evapotranspiration|evaporacao|evaporation|transpiracao)\b/],
  ['agua',/\b(agua|aguas|water|grace|subterranea|subterraneas|groundwater|lencois)\b/],['chuva',/\b(chuva|chuvas|precipitacao|chover|rain|rainfall|precipitation|gpm)\b/],['ndvi',/\b(vegetacao|vegetation|ndvi|plantas|plants|verde|green|greening|floresta|florestas|forest|forests)\b/],
  ['ch4',/\b(metano|methane|ch4|ch 4|gas|gases)\b/],['tar',/\b(temperatura|temperature|temperaturas|calor|heat|aquecimento|warming|quente|ar|air)\b/]];
-const VCURTO={ch4:['o metano','methane'],chuva:['a chuva','rainfall'],tar:['a temperatura do ar','air temperature'],lst:['a temperatura da superfície da terra','land surface temperature'],ndvi:['a vegetação (NDVI)','vegetation (NDVI)'],
+const VCURTO={ch4:['o metano','methane'],co2:['o dióxido de carbono','carbon dioxide'],chuva:['a chuva','rainfall'],tar:['a temperatura do ar','air temperature'],lst:['a temperatura da superfície da terra','land surface temperature'],ndvi:['a vegetação (NDVI)','vegetation (NDVI)'],
  et:['a evapotranspiração','evapotranspiration'],solo:['a humidade do solo','soil moisture'],agua:['a água total armazenada','total water storage'],sst:['a temperatura do mar','sea surface temperature'],clor:['a clorofila do oceano','ocean chlorophyll']};
-const VUN={ch4:['ppb por década','ppb per decade'],chuva:['por cento por década','percent per decade'],clor:['por cento por década','percent per decade'],tar:['graus Celsius por década','degrees Celsius per decade'],lst:['graus Celsius por década','degrees Celsius per decade'],sst:['graus Celsius por década','degrees Celsius per decade'],
+const VUN={ch4:['ppb por década','ppb per decade'],co2:['ppm por década','ppm per decade'],chuva:['por cento por década','percent per decade'],clor:['por cento por década','percent per decade'],tar:['graus Celsius por década','degrees Celsius per decade'],lst:['graus Celsius por década','degrees Celsius per decade'],sst:['graus Celsius por década','degrees Celsius per decade'],
  ndvi:['unidades de NDVI por década','NDVI units per decade'],et:['mm por ano, por década','mm per year, per decade'],solo:['m³ de água por m³ de solo, por década','m³ of water per m³ of soil, per decade'],agua:['cm por década','cm per decade']};
 const vCurto=v=>VCURTO[v.id]?L2(...VCURTO[v.id]):vNome(v),vUnF=v=>VUN[v.id]?L2(...VUN[v.id]):vTr(v).replace('/',L2(' por ',' per ')),Cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
 const vNum=x=>{const a=Math.abs(x);return fmtA(a,a>=10?0:a>=1?1:a>=.1?2:3)};

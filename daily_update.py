@@ -3,6 +3,8 @@
   1. airs_baixar.py          metano mensal do NASA Aqua AIRS (NASA Earthdata, precisa do segredo EARTHDATA_TOKEN);
                              só descarrega os meses novos (os antigos ficam na cache do GitHub Actions)
   2. airs_celulas.py         camada de células do metano (últimos 36 meses) -> cells.csv, meta.json
+     airs_periodos.py        «Quando mudou?» do metano (mundo, continentes, países e blocos) -> periodos*.json
+     co2_baixar.py           CO2 do OCO-2/GEOS (2015-2021); o produto já terminou, por isso só corre se faltar co2_anual.json
   3. variaveis_exportar.py   médias anuais das variáveis da NASA no Google Earth Engine
                              (MODIS, GPM IMERG, GRACE/GRACE-FO, FLDAS, MODIS Aqua oceano), de 2003 ao último ano completo
   4. variaveis_tendencias.py tendências, significância, países e séries por célula
@@ -17,13 +19,19 @@ def corre(*args):
 airs_ok = False
 if os.environ.get("EARTHDATA_TOKEN"):
     airs_ok = corre("airs_baixar.py") and os.path.exists("airs_ch4_400hPa.npz") and corre("airs_celulas.py")
+    if airs_ok and not corre("airs_periodos.py"): print("::warning::«Quando mudou?» do metano não atualizado: mantém-se a versão anterior.")
     if not airs_ok: print("::warning::Metano AIRS não atualizado: mantém-se a versão anterior.")
 else:
     print("::warning::Falta o segredo EARTHDATA_TOKEN: o metano AIRS não foi atualizado hoje.")
 
+co2_novo = False
+if os.environ.get("EARTHDATA_TOKEN") and not os.path.exists("co2_anual.json"):
+    co2_novo = corre("co2_baixar.py") and os.path.exists("co2_anual.json")
+    if not co2_novo: print("::warning::CO2 (OCO-2) não descarregado: tenta outra vez na próxima atualização.")
+
 ee_ok = corre("variaveis_exportar.py")
 if not ee_ok: print("::warning::Earth Engine falhou: as variáveis mantêm os dados anteriores.")
 
-if (ee_ok or airs_ok) and os.path.exists("variaveis_anuais.npz"):
+if (ee_ok or airs_ok or co2_novo) and os.path.exists("variaveis_anuais.npz"):
     if not corre("variaveis_tendencias.py"): print("::warning::Falhou o cálculo das tendências: mantêm-se os dados anteriores.")
 print("Atualização concluída (só dados da NASA).")
