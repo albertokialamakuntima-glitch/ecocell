@@ -4,7 +4,7 @@ Método (igual para todas): médias anuais por célula de 1°; tendência de Sen
 corrigida pela autocorrelação lag-1 dos resíduos; correção FDR de Benjamini-Hochberg (q < 0,05) em cada variável.
 Também por país (média ponderada pela área das células do país) e para o conjunto (terra, mar ou mundo).
 
-Entradas (mesma pasta): variaveis_anuais.npz (do variaveis_exportar.py), airs_ch4_400hPa.npz, co2_anual_f32.bin + co2_anual.json (do co2_baixar.py), gpm_anual_1deg.csv, world.json
+Entradas (mesma pasta): variaveis_anuais.npz (do variaveis_exportar.py), airs_ch4_400hPa.npz, ch4s5p_anual_* (do s5p_exportar.py), co2_anual_* (do co2_baixar.py), gpm_anual_1deg.csv, world.json
 Saídas:  variaveis.json        (resumo que vai dentro do site: mapas, países, rankings)
          vars/<id>.json        (estatísticas e séries anuais de cada célula; o site só as carrega quando precisas)
 Uso:     py variaveis_tendencias.py
@@ -20,9 +20,12 @@ import shapely
 # ---------- metadados das variáveis (nomes em pt/en, unidades, missão, onde faz sentido) ----------
 META = {
  "ch4":  dict(pt="Metano (troposfera média)", en="Methane (mid-troposphere)", un="ppb", tr="ppb/década", tr_en="ppb/decade", fonte="NASA Aqua AIRS (400 hPa)", tipo="satélite", dom="tudo", d=1),
- "co2":  dict(pt="Dióxido de carbono (coluna total)", en="Carbon dioxide (total column)", un="ppm", tr="ppm/década", tr_en="ppm/decade", fonte="NASA OCO-2 assimilado no modelo GEOS (L3, v10r)", tipo="modelo", dom="tudo", d=2, min=6,
-              nota="Só 2015–2021: o produto da NASA que junta o satélite OCO-2 ao modelo GEOS termina em fevereiro de 2022.",
-              nota_en="Only 2015–2021: the NASA product that combines the OCO-2 satellite with the GEOS model ends in February 2022."),
+ "ch4s5p":dict(pt="Metano (Sentinel-5P, coluna total)", en="Methane (Sentinel-5P, total column)", un="ppb", tr="ppb/década", tr_en="ppb/decade", fonte="ESA Copernicus Sentinel-5P TROPOMI (L3 OFFL)", tipo="satélite", dom="tudo", d=1, min=6, movel=True,
+              nota="Satélite europeu, atualizado todos os dias. Cada «ano» são 12 meses seguidos; o último acaba em {ate}. Contém dados Copernicus Sentinel modificados.",
+              nota_en="European satellite, updated daily. Each «year» is 12 consecutive months; the last one ends in {ate}. Contains modified Copernicus Sentinel data."),
+ "co2":  dict(pt="Dióxido de carbono (OCO-2 e OCO-3)", en="Carbon dioxide (OCO-2 and OCO-3)", un="ppm", tr="ppm/década", tr_en="ppm/decade", fonte="NASA OCO-2 e OCO-3 (L2 Lite v11)", tipo="satélite", dom="tudo", d=2, min=6, movel=True,
+              nota="Atualizado todos os dias (a NASA publica cada dia cerca de 5 semanas depois). Cada «ano» são 12 meses seguidos; o último acaba em {ate}. Blocos sem medições suficientes ficam em branco.",
+              nota_en="Updated daily (NASA publishes each day about 5 weeks later). Each «year» is 12 consecutive months; the last one ends in {ate}. Blocks without enough measurements stay blank."),
  "chuva":dict(pt="Chuva anual", en="Annual rainfall", un="mm/ano", tr="%/década", tr_en="%/decade", fonte="NASA/JAXA GPM IMERG", tipo="satélite", dom="tudo", d=1, pct=True),
  "tar":  dict(pt="Temperatura do ar (2 m)", en="Air temperature (2 m)", un="°C", tr="°C/década", tr_en="°C/decade", fonte="Modelo NASA FLDAS (Noah, forçado por MERRA-2/CHIRPS)", tipo="modelo", dom="terra", d=2),
  "lst":  dict(pt="Temperatura da superfície (dia)", en="Land surface temperature (day)", un="°C", tr="°C/década", tr_en="°C/decade", fonte="NASA Terra MODIS (MOD11A2)", tipo="satélite", dom="terra", d=2, ate=2020,
@@ -55,9 +58,11 @@ if os.path.exists("airs_ch4_400hPa.npz"):                       # metano: meses 
         cub.append(np.nanmean(A[s], 0) if len(s) >= 10 else np.full((180, 360), np.nan))
     ok = [i for i, y in enumerate(aa) if len([m for m in ms if m.startswith(str(y))]) >= 10]
     cubos["ch4"] = ([aa[i] for i in ok], np.array([cub[i] for i in ok]))
-if os.path.exists("co2_anual.json") and os.path.exists("co2_anual_f32.bin"):   # CO2 do OCO-2/GEOS (co2_baixar.py): médias anuais já em blocos de 1°
-    cj = json.load(open("co2_anual.json", encoding="utf-8"))
-    cubos["co2"] = (cj["anos"], np.fromfile("co2_anual_f32.bin", dtype="<f4").reshape(cj["forma"]).astype("float64"))
+ATE = {}
+for k in ("ch4s5p", "co2"):     # Sentinel-5P (s5p_exportar.py) e OCO-2/OCO-3 (co2_baixar.py): «anos móveis» já em blocos de 1°
+    if os.path.exists(f"{k}_anual.json") and os.path.exists(f"{k}_anual_f32.bin"):
+        cj = json.load(open(f"{k}_anual.json", encoding="utf-8")); ATE[k] = cj.get("ate", "")
+        cubos[k] = (cj["anos"], np.fromfile(f"{k}_anual_f32.bin", dtype="<f4").reshape(cj["forma"]).astype("float64"))
 if "chuva" in z.files: cubos["chuva"] = (anos, z["chuva"].astype("float64"))   # chuva do GPM pelo Earth Engine (variaveis_exportar.py)
 elif os.path.exists("gpm_anual_1deg.csv"):                      # ou da tabela antiga (lat, lon, y2003...) -> cubo
     import csv
@@ -162,7 +167,7 @@ for k, M in META.items():
         r = resumo(sr, md); paises[nomes[c]] = r + [round(md, M["d"] + 2), [None if not np.isfinite(x) else round(float(x), M["d"] + 2) for x in sr]]; pp.append(r[3])
     for (nm, v), qq in zip(list(paises.items()), fdr(pp)):
         v.insert(4, round(float(qq), 5)); v.insert(5, int(qq < 0.05 and (v[1] > 0 or v[2] < 0)) * int(np.sign(v[0])))   # [s, lo, hi, p, q, sinal, média, série]
-    saida["vars"].append(dict(id=k, nome=dict(pt=M["pt"], en=M["en"]), un=M["un"], tr=dict(pt=M["tr"], en=M["tr_en"]), fonte=M["fonte"], tipo=M["tipo"], dom=M["dom"], nota=dict(pt=M.get("nota", ""), en=M.get("nota_en", "")),
+    saida["vars"].append(dict(id=k, nome=dict(pt=M["pt"], en=M["en"]), un=M["un"], tr=dict(pt=M["tr"], en=M["tr_en"]), fonte=M["fonte"], tipo=M["tipo"], dom=M["dom"], nota=dict(pt=M.get("nota", "").replace("{ate}", ATE.get(k, "")), en=M.get("nota_en", "").replace("{ate}", ATE.get(k, ""))), ate=ATE.get(k),
         anos=[ya[0], ya[-1]], n=len(idx), sobe=round(sobe, 1), desce=round(desce, 1), esc=round(esc, 5), r=b64(R), m=b64(bits),
         glob=dict(s=G[0], lo=G[1], hi=G[2], p=round(G[3], 6), serie=[None if not np.isfinite(x) else round(float(x), M["d"] + 2) for x in g], media=round(gm, M["d"] + 2)), paises=paises))
     # ficheiro por célula (carregado só quando preciso): estatísticas + séries quantizadas em int16

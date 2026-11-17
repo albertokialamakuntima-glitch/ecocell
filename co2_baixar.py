@@ -1,61 +1,91 @@
-"""Dióxido de carbono (CO2) da NASA: OCO-2 assimilado no modelo GEOS, Level 3 mensal, v10r (OCO2_GEOS_L3CO2_MONTH).
-Descarrega os meses de 2015 a 2021 (~3 MB cada), passa a grelha de 0,5° x 0,625° para blocos de 1° e grava as médias anuais
-(só anos com os 12 meses) em:
-  co2_anual_f32.bin   float32, (anos, 180, 360), Norte em cima, em ppm (coluna total, XCO2)
-  co2_anual.json      anos e descrição
-O produto da NASA termina em fevereiro de 2022, por isso basta correr uma vez (o daily_update.py só o corre se faltar o resultado).
+"""Dióxido de carbono (CO2) da NASA: satélites OCO-2 e OCO-3, ficheiros diários L2 Lite (v11), desde 2019.
+Para cada dia lê SÓ latitude, longitude, XCO2 e a bandeira de qualidade (pelo OPeNDAP: ~2 MB em vez de 60-90 MB), junta as
+medições boas (bandeira 0) em médias mensais por bloco de 1° e grava os «anos móveis» (anos_moveis.py):
+  co2_anual_f32.bin + co2_anual.json
+Corre todos os dias (daily_update.py): começa pelos dias mais recentes e, com o tempo que sobra, vai preenchendo o passado
+(nos meses com mais de 13 meses só lê 1 dia em cada 3, que chega para a média do mês). Guarda o progresso em airs_cache/oco/,
+a pasta que o GitHub Actions já guarda entre execuções, por isso cada noite continua onde a anterior ficou.
 
-Uso (com o token definido): py co2_baixar.py        Precisa: numpy earthaccess netCDF4
+Uso (com o token definido): py co2_baixar.py        Precisa: numpy earthaccess xarray pydap netCDF4
+Variável opcional: CO2_MINUTOS (tempo máximo por execução; 40 por omissão).
 """
-import os, re, glob, json, time
-import numpy as np, earthaccess, netCDF4
+import os, re, glob, json, time, datetime
+import numpy as np, earthaccess
+from anos_moveis import grava
 
-ANOS = list(range(2015, 2022))
-CACHE, TMP = "airs_tmp/co2_cache", "airs_tmp/co2_dl"                # dentro de airs_tmp/, que a atualização automática nunca envia para o GitHub
-os.makedirs(CACHE, exist_ok=True); os.makedirs(TMP, exist_ok=True)
+PASTA = "airs_cache/oco"; os.makedirs(PASTA, exist_ok=True); os.makedirs("airs_tmp/oco", exist_ok=True)
+FEITOS = f"{PASTA}/feitos.txt"
+LIMITE = float(os.environ.get("CO2_MINUTOS", "40")) * 60
+INICIO = datetime.date(2019, 1, 1)
+PRODUTOS = [("OCO2_L2_Lite_FP", "11.3r"), ("OCO2_L2_Lite_FP", "11.2r"), ("OCO3_L2_Lite_FP", "11r")]
+t0 = time.time()
 
 
-def para_1grau(ds):
-    """XCO2 (mol/mol) numa grelha de 0,5° x 0,625° -> média em blocos de 1° (ppm), Norte em cima"""
-    nome = next((v for v in ds.variables if v.upper() == "XCO2"), None) or next((v for v in ds.variables if "XCO2" in v.upper()), None)
-    if not nome: raise KeyError("sem XCO2; variáveis: " + ", ".join(ds.variables))
-    la = np.asarray(ds.variables[next(v for v in ds.variables if v.lower() in ("lat", "latitude"))][:], dtype="float64")
-    lo = np.asarray(ds.variables[next(v for v in ds.variables if v.lower() in ("lon", "longitude"))][:], dtype="float64")
-    x = np.ma.filled(ds.variables[nome][:].astype("float64"), np.nan).squeeze()
-    if x.shape != (la.size, lo.size): x = x.reshape(la.size, lo.size)
-    if np.nanmedian(x) < 1: x = x * 1e6                                   # mol/mol -> ppm
-    x[(x < 300) | (x > 500)] = np.nan
-    lo = np.where(lo >= 180, lo - 360, lo)
-    LO, LA = np.meshgrid(lo, la)
-    r = np.clip(np.floor(90 - LA), 0, 179).astype(int); c = np.clip(np.floor(LO + 180), 0, 359).astype(int)
-    ok = np.isfinite(x); S = np.zeros((180, 360)); N = np.zeros((180, 360))
-    np.add.at(S, (r[ok], c[ok]), x[ok]); np.add.at(N, (r[ok], c[ok]), 1)
-    return np.where(N > 0, S / np.maximum(N, 1), np.nan).astype("float32")
+def acumula(mes, la, lo, x):
+    """soma e contagem do mês, por bloco de 1° (Norte em cima)"""
+    f = f"{PASTA}/{mes}.npz"
+    S, N = (np.load(f)["S"], np.load(f)["N"]) if os.path.exists(f) else (np.zeros((180, 360)), np.zeros((180, 360)))
+    r = np.clip(np.floor(90 - la), 0, 179).astype(int); c = np.clip(np.floor(((lo + 180) % 360)), 0, 359).astype(int)
+    np.add.at(S, (r, c), x); np.add.at(N, (r, c), 1)
+    np.savez_compressed(f, S=S, N=N)
+
+
+def le_opendap(g, sessao):
+    import xarray as xr
+    url = next(u["URL"] for u in g["umm"]["RelatedUrls"] if "OPENDAP" in str(u.get("Subtype", "")).upper() or "opendap" in u["URL"])
+    pref = "dap4://" if "opendap.earthdata.nasa.gov" in url else "dap2://"
+    ds = xr.open_dataset(pref + url.split("://", 1)[1], engine="pydap", session=sessao)
+    v = {k: np.asarray(ds[k].values) for k in ("latitude", "longitude", "xco2", "xco2_quality_flag")}
+    ds.close(); return v
+
+
+def le_ficheiro(g):
+    import netCDF4
+    f = str(earthaccess.download([g], "airs_tmp/oco")[0])
+    with netCDF4.Dataset(f) as ds: v = {k: np.asarray(ds.variables[k][:]) for k in ("latitude", "longitude", "xco2", "xco2_quality_flag")}
+    os.remove(f); return v
 
 
 if __name__ == "__main__":
     if os.environ.get("EARTHDATA_TOKEN"): earthaccess.login(strategy="environment")
     else: earthaccess.login(strategy="interactive", persist=True)
-    res = earthaccess.search_data(short_name="OCO2_GEOS_L3CO2_MONTH", version="10r", temporal=(f"{ANOS[0]}-01-01", f"{ANOS[-1]}-12-31"), count=-1)
-    print("ficheiros mensais encontrados:", len(res))
-    for i, g in enumerate(res, 1):
-        m = re.search(r"month_(\d{4})(\d{2})", g.data_links()[0])
-        if not m: continue
-        out = f"{CACHE}/{m.group(1)}-{m.group(2)}.npy"
-        if os.path.exists(out): continue
-        for tentativa in range(5):
-            try:
-                f = str(earthaccess.download([g], TMP)[0])
-                with netCDF4.Dataset(f) as ds: np.save(out, para_1grau(ds))
-                os.remove(f); print(f"[{i}/{len(res)}] {m.group(1)}-{m.group(2)} ok", flush=True); break
-            except Exception as e:
-                print(f"  falhou {m.group(1)}-{m.group(2)} ({tentativa + 1}/5):", str(e)[:120], flush=True); time.sleep(15 * (tentativa + 1))
-    cub, anos = [], []
-    for y in ANOS:
-        fs = sorted(glob.glob(f"{CACHE}/{y}-*.npy"))
-        if len(fs) < 12: print(f"{y}: só {len(fs)} meses, fica de fora"); continue
-        cub.append(np.nanmean([np.load(f) for f in fs], 0)); anos.append(y)
-    if len(anos) < 5: raise SystemExit("CO2: anos completos insuficientes")
-    np.asarray(cub, dtype="<f4").tofile("co2_anual_f32.bin")
-    json.dump(dict(anos=anos, forma=[len(anos), 180, 360], unidade="ppm", produto="OCO2_GEOS_L3CO2_MONTH v10r", variavel="XCO2"), open("co2_anual.json", "w", encoding="utf-8"))
-    print(f"co2_anual_f32.bin: {anos[0]}-{anos[-1]} | média global {np.nanmean(cub[0]):.1f} ppm em {anos[0]} -> {np.nanmean(cub[-1]):.1f} ppm em {anos[-1]}")
+    feitos = set(open(FEITOS).read().split()) if os.path.exists(FEITOS) else set()
+    hoje = datetime.date.today(); recente = hoje - datetime.timedelta(days=400)
+    gr, vistos = [], set()
+    for sn, ver in PRODUTOS:                                   # OCO-2 na versão mais nova que exista para cada dia; OCO-3
+        try: res = earthaccess.search_data(short_name=sn, version=ver, temporal=(str(INICIO), str(hoje)), count=-1)
+        except Exception as e: print(sn, ver, "falhou a pesquisa:", str(e)[:100]); continue
+        for g in res:
+            nome = g.data_links()[0].rsplit("/", 1)[-1]; m = re.search(r"(oco\d)_LtCO2_(\d{6})", nome)
+            if not m: continue
+            chave = f"{m.group(1)}_{m.group(2)}"
+            if chave in vistos: continue
+            d = datetime.datetime.strptime(m.group(2), "%y%m%d").date()
+            if d < recente and d.toordinal() % 3: continue      # passado: 1 dia em cada 3
+            vistos.add(chave); gr.append((d, chave, g))
+    gr.sort(key=lambda x: x[0], reverse=True)                  # mais recentes primeiro
+    falta = [x for x in gr if x[1] not in feitos]
+    print(f"OCO-2/OCO-3: {len(gr)} dias a usar, {len(falta)} por ler", flush=True)
+    sessao = earthaccess.get_requests_https_session(); lidos = 0
+    for d, chave, g in falta:
+        if time.time() - t0 > LIMITE: print("tempo esgotado nesta execução: continua amanhã"); break
+        try:
+            try: v = le_opendap(g, sessao)
+            except Exception as e1: print(f"  OPeNDAP falhou em {chave} ({str(e1)[:80]}); ficheiro inteiro...", flush=True); v = le_ficheiro(g)
+            ok = (v["xco2_quality_flag"] == 0) & np.isfinite(v["xco2"]) & (v["xco2"] > 350) & (v["xco2"] < 480)
+            acumula(d.strftime("%Y-%m"), v["latitude"][ok].astype(float), v["longitude"][ok].astype(float), v["xco2"][ok].astype(float))
+            with open(FEITOS, "a") as fh: fh.write(chave + "\n")
+            lidos += 1
+            if lidos % 25 == 0: print(f"  {lidos} dias lidos ({chave})", flush=True)
+        except Exception as e:
+            print(f"  falhou {chave}: {str(e)[:100]}", flush=True); time.sleep(5)
+    print(f"lidos {lidos} dias nesta execução")
+    fs = sorted(glob.glob(f"{PASTA}/????-??.npz"))
+    if not fs: raise SystemExit("CO2: ainda sem meses")
+    meses = [os.path.basename(f)[:7] for f in fs]
+    todos = [f"{a}-{m:02d}" for a in range(int(meses[0][:4]), int(meses[-1][:4]) + 1) for m in range(1, 13)]
+    todos = todos[todos.index(meses[0]): todos.index(meses[-1]) + 1]
+    cubo = np.full((len(todos), 180, 360), np.nan, dtype="float32")
+    for f, m in zip(fs, meses):
+        z = np.load(f); cubo[todos.index(m)] = np.where(z["N"] >= 3, z["S"] / np.maximum(z["N"], 1), np.nan)
+    grava("co2", todos, cubo, min_meses=3, fonte="NASA OCO-2 e OCO-3 L2 Lite v11 (GES DISC)")
