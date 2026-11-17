@@ -11,7 +11,8 @@
   4. variaveis_tendencias.py tendências, significância, países e séries por célula
 Se uma fonte falhar (rede, quota), mantêm-se os dados anteriores dessa parte e o resto continua.
 """
-import os, subprocess, sys
+import os, subprocess, sys, time
+T0 = time.time()
 
 def corre(*args):
     print(f"\n=== {' '.join(args)} ===", flush=True)
@@ -25,16 +26,17 @@ if os.environ.get("EARTHDATA_TOKEN"):
 else:
     print("::warning::Falta o segredo EARTHDATA_TOKEN: o metano AIRS não foi atualizado hoje.")
 
-co2_novo = False
-if os.environ.get("EARTHDATA_TOKEN"):
-    co2_novo = corre("co2_baixar.py") and os.path.exists("co2_anual.json")
-    if not co2_novo: print("::warning::CO2 (OCO-2/OCO-3) ainda não tem anos suficientes ou falhou: mantém-se o anterior.")
-
 s5p_ok = corre("s5p_exportar.py") and os.path.exists("ch4s5p_anual.json")
 if not s5p_ok: print("::warning::Metano do Sentinel-5P não atualizado: mantém-se o anterior.")
 
 ee_ok = corre("variaveis_exportar.py")
 if not ee_ok: print("::warning::Earth Engine falhou: as variáveis mantêm os dados anteriores.")
+
+co2_novo = False
+if os.environ.get("EARTHDATA_TOKEN"):           # o CO2 fica para o fim e usa só o tempo que sobra (o GitHub pára a execução aos 150 min)
+    os.environ["CO2_MINUTOS"] = str(max(5, min(40, 115 - (time.time() - T0) / 60)))
+    co2_novo = corre("co2_baixar.py") and os.path.exists("co2_anual.json")
+    if not co2_novo: print("::warning::CO2 (OCO-2/OCO-3) ainda não tem anos suficientes ou falhou: mantém-se o anterior.")
 
 if (ee_ok or airs_ok or co2_novo or s5p_ok) and os.path.exists("variaveis_anuais.npz"):
     if not corre("variaveis_tendencias.py"): print("::warning::Falhou o cálculo das tendências: mantêm-se os dados anteriores.")
