@@ -1,0 +1,1 @@
+{"anos": [2020, 2021, 2022, 2023, 2024, 2025, 2026], "forma": [7, 180, 360], "desde": "2019-12", "ate": "2026-11", "fonte": "ESA Copernicus Sentinel-5P TROPOMI L3 OFFL (Google Earth Engine)", "regra": "anos de 12 meses que acabam em 2026-11; bloco conta se tiver 6+ meses"}
